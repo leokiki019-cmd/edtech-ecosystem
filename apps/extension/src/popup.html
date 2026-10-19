@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Integrity Lens</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Integrity Lens</p>
+        <h1>Writing Session</h1>
+      </div>
+      <span id="status-dot" class="status-dot" title="Session status"></span>
+    </header>
+
+    <section class="site">
+      <p id="site-name" class="site-name">No active tab</p>
+      <p id="assignment" class="assignment">No assignment detected</p>
+    </section>
+
+    <section class="score-card">
+      <div class="score-header">
+        <span>Effort score</span>
+        <span id="score" class="score-value">--</span>
+      </div>
+      <div class="meter">
+        <div id="meter-fill" class="meter-fill"></div>
+      </div>
+      <p id="score-hint" class="hint">Start typing in a document to build a session.</p>
+    </section>
+
+    <section class="stats">
+      <div class="stat">
+        <span id="keystrokes" class="stat-value">0</span>
+        <span class="stat-label">Keystrokes</span>
+      </div>
+      <div class="stat">
+        <span id="pastes" class="stat-value">0</span>
+        <span class="stat-label">Pastes</span>
+      </div>
+      <div class="stat">
+        <span id="paste-volume" class="stat-value">0</span>
+        <span class="stat-label">Pasted chars</span>
+      </div>
+      <div class="stat">
+        <span id="ai-switches" class="stat-value">0</span>
+        <span class="stat-label">AI tab switches</span>
+      </div>
+    </section>
+
+    <footer class="app-footer">
+      <span id="active-time" class="active-time">0s active</span>
+      <button id="reset" type="button">Reset</button>
+    </footer>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

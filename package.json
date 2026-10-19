@@ -1,0 +1,18 @@
+{
+  "name": "edtech-ecosystem",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Unified EdTech ecosystem for classroom management, collaboration and process-based academic integrity monitoring",
+  "workspaces": [
+    "apps/api",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace @edtech/api",
+    "build:api": "npm run build --workspace @edtech/api",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
