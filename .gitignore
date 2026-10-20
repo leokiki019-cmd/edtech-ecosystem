@@ -12,6 +12,7 @@ coverage/
 .packages
 .flutter-plugins
 .flutter-plugins-dependencies
+.metadata
 build/
 *.iml
 .idea/
