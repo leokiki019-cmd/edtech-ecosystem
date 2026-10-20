@@ -5,14 +5,18 @@ import type {
   SignedTelemetryBatch,
 } from "@edtech/shared";
 import {
-  assignments,
-  effortKey,
-  effortScores,
-  integrityFlags,
-  submissions,
-  telemetryBatches,
-  users,
-} from "../store/memory";
+  createTelemetryBatch,
+  getAssignment,
+  getEffortScore,
+  getIntegrityFlags,
+  getSubmission,
+  getSubmissionsByAssignment,
+  getTelemetryBatches,
+  getUser,
+  setEffortScore,
+  setIntegrityFlags,
+  updateSubmission,
+} from "../store/db";
 import {
   buildEffortScore,
   computeEffortMetrics,
@@ -50,17 +54,13 @@ export async function telemetryRoutes(app: FastifyInstance) {
         );
       }
 
-      const assignment = assignments.find(
-        (entry) => entry.id === batch.assignmentId,
-      );
+      const assignment = await getAssignment(batch.assignmentId);
       if (!assignment) {
         return fail(reply, 404, "ASSIGNMENT_NOT_FOUND", "Assignment not found");
       }
 
-      const student = users.find(
-        (entry) => entry.id === batch.studentId && entry.role === "student",
-      );
-      if (!student) {
+      const student = await getUser(batch.studentId);
+      if (!student || student.role !== "student") {
         return fail(reply, 404, "STUDENT_NOT_FOUND", "Student not found");
       }
 
@@ -86,19 +86,18 @@ export async function telemetryRoutes(app: FastifyInstance) {
         batch.assignmentId,
         metrics,
       );
-      const key = effortKey(batch.studentId, batch.assignmentId);
+      const flags = computeIntegrityFlags(metrics);
 
-      effortScores.set(key, score);
-      integrityFlags.set(key, computeIntegrityFlags(metrics));
-      telemetryBatches.push(batch);
+      await createTelemetryBatch(batch);
+      await setEffortScore(score);
+      await setIntegrityFlags(batch.studentId, batch.assignmentId, flags);
 
-      const submission = submissions.find(
-        (entry) =>
-          entry.assignmentId === batch.assignmentId &&
-          entry.studentId === batch.studentId,
+      const existing = await getSubmissionsByAssignment(batch.assignmentId);
+      const submission = existing.find(
+        (entry) => entry.studentId === batch.studentId,
       );
       if (submission) {
-        submission.effortScore = score.score;
+        await updateSubmission(submission.id, { effortScore: score.score });
       }
 
       return reply.code(202).send({
@@ -115,7 +114,7 @@ export async function telemetryRoutes(app: FastifyInstance) {
     "/integrity/:assignmentId/:studentId",
     async (request, reply) => {
       const { assignmentId, studentId } = request.params;
-      const score = effortScores.get(effortKey(studentId, assignmentId));
+      const score = await getEffortScore(studentId, assignmentId);
 
       if (!score) {
         return fail(
@@ -126,9 +125,9 @@ export async function telemetryRoutes(app: FastifyInstance) {
         );
       }
 
+      const submissions = await getSubmissionsByAssignment(assignmentId);
       const submission = submissions.find(
-        (entry) =>
-          entry.assignmentId === assignmentId && entry.studentId === studentId,
+        (entry) => entry.studentId === studentId,
       );
 
       const report: IntegrityReport = {
@@ -136,8 +135,8 @@ export async function telemetryRoutes(app: FastifyInstance) {
         assignmentId,
         studentId,
         effortScore: score,
-        flags: integrityFlags.get(effortKey(studentId, assignmentId)) ?? ["none"],
-        replayAvailable: telemetryBatches.some(
+        flags: await getIntegrityFlags(studentId, assignmentId),
+        replayAvailable: (await getTelemetryBatches()).some(
           (batch) =>
             batch.assignmentId === assignmentId && batch.studentId === studentId,
         ),

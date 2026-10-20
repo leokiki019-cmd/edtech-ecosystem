@@ -1,13 +1,16 @@
-import { randomUUID } from "node:crypto";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import type { ApiError, ChatMessage } from "@edtech/shared";
 import {
-  calendarEvents,
-  channels,
-  courses,
-  messages,
-  users,
-} from "../store/memory";
+  createMessage,
+  getCalendarEvents,
+  getChannel,
+  getChannelsByCourse,
+  getCourse,
+  getCourses,
+  getMessages,
+  getUser,
+  getUsers,
+} from "../store/db";
 
 const fail = (
   reply: FastifyReply,
@@ -22,16 +25,16 @@ export async function classroomRoutes(app: FastifyInstance) {
     let courseIds: Set<string>;
 
     if (userId) {
-      const user = users.find((entry) => entry.id === userId);
+      const user = await getUser(userId);
       if (!user) {
         return fail(reply, 404, "USER_NOT_FOUND", "User not found");
       }
 
       if (user.role === "admin") {
-        courseIds = new Set(courses.map((course) => course.id));
+        courseIds = new Set((await getCourses()).map((course) => course.id));
       } else if (user.role === "teacher") {
         courseIds = new Set(
-          courses
+          (await getCourses())
             .filter((course) => course.teacherId === user.id)
             .map((course) => course.id),
         );
@@ -39,12 +42,11 @@ export async function classroomRoutes(app: FastifyInstance) {
         courseIds = new Set(user.courseIds);
       }
     } else {
-      courseIds = new Set(courses.map((course) => course.id));
+      courseIds = new Set((await getCourses()).map((course) => course.id));
     }
 
-    const data = calendarEvents
-      .filter((event) => event.courseId === null || courseIds.has(event.courseId))
-      .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+    const data = await getCalendarEvents(courseIds);
+    data.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 
     return { data };
   });
@@ -52,13 +54,13 @@ export async function classroomRoutes(app: FastifyInstance) {
   app.get<{ Params: { courseId: string } }>(
     "/courses/:courseId/channels",
     async (request, reply) => {
-      const course = courses.find((entry) => entry.id === request.params.courseId);
+      const course = await getCourse(request.params.courseId);
       if (!course) {
         return fail(reply, 404, "COURSE_NOT_FOUND", "Course not found");
       }
 
       return {
-        data: channels.filter((channel) => channel.courseId === course.id),
+        data: await getChannelsByCourse(course.id),
       };
     },
   );
@@ -66,16 +68,13 @@ export async function classroomRoutes(app: FastifyInstance) {
   app.get<{ Params: { channelId: string } }>(
     "/channels/:channelId/messages",
     async (request, reply) => {
-      const channel = channels.find(
-        (entry) => entry.id === request.params.channelId,
-      );
+      const channel = await getChannel(request.params.channelId);
       if (!channel) {
         return fail(reply, 404, "CHANNEL_NOT_FOUND", "Channel not found");
       }
 
-      const data = messages
-        .filter((message) => message.channelId === channel.id)
-        .sort((a, b) => a.sentAt.localeCompare(b.sentAt));
+      const data = await getMessages(channel.id);
+      data.sort((a, b) => a.sentAt.localeCompare(b.sentAt));
 
       return { data };
     },
@@ -85,9 +84,7 @@ export async function classroomRoutes(app: FastifyInstance) {
     Params: { channelId: string };
     Body: { authorId?: string; body?: string };
   }>("/channels/:channelId/messages", async (request, reply) => {
-    const channel = channels.find(
-      (entry) => entry.id === request.params.channelId,
-    );
+    const channel = await getChannel(request.params.channelId);
     if (!channel) {
       return fail(reply, 404, "CHANNEL_NOT_FOUND", "Channel not found");
     }
@@ -104,7 +101,7 @@ export async function classroomRoutes(app: FastifyInstance) {
     }
 
     if (channel.kind === "announcement") {
-      const author = users.find((entry) => entry.id === authorId);
+      const author = await getUser(authorId);
       if (author?.role === "student") {
         return fail(
           reply,
@@ -115,15 +112,11 @@ export async function classroomRoutes(app: FastifyInstance) {
       }
     }
 
-    const message: ChatMessage = {
-      id: randomUUID(),
+    const message = await createMessage({
       channelId: channel.id,
       authorId,
       body,
-      sentAt: new Date().toISOString(),
-    };
-
-    messages.push(message);
+    });
     return reply.code(201).send({ data: message });
   });
 }

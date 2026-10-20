@@ -1,7 +1,17 @@
-import { randomUUID } from "node:crypto";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import type { ApiError, Attachment, Submission, User } from "@edtech/shared";
-import { assignments, courses, submissions, users } from "../store/memory";
+import {
+  createSubmission,
+  getAssignment,
+  getAssignmentsByCourse,
+  getCourse,
+  getCourses,
+  getSubmission,
+  getSubmissionsByAssignment,
+  getUser,
+  getUsers,
+  updateSubmission,
+} from "../store/db";
 
 const fail = (
   reply: FastifyReply,
@@ -11,38 +21,48 @@ const fail = (
 ) => reply.code(statusCode).send({ error: { code, message } } satisfies ApiError);
 
 export async function courseRoutes(app: FastifyInstance) {
-  app.get("/courses", async () => ({
-    data: courses.map((course) => ({
-      ...course,
-      teacherName:
-        users.find((user) => user.id === course.teacherId)?.displayName ?? "Unassigned",
-      studentCount: course.studentIds.length,
-      openAssignmentCount: assignments.filter(
-        (assignment) => assignment.courseId === course.id && assignment.status === "open",
-      ).length,
-    })),
-  }));
+  app.get("/courses", async () => {
+    const courses = await getCourses();
+    const users = await getUsers();
+    return {
+      data: await Promise.all(
+        courses.map(async (course) => {
+          const teacher = users.find((u) => u.id === course.teacherId);
+          const courseAssignments = await getAssignmentsByCourse(course.id);
+          return {
+            ...course,
+            teacherName: teacher?.displayName ?? "Unassigned",
+            studentCount: course.studentIds.length,
+            openAssignmentCount: courseAssignments.filter(
+              (a) => a.status === "open",
+            ).length,
+          };
+        }),
+      ),
+    };
+  });
 
   app.get<{ Params: { courseId: string } }>(
     "/courses/:courseId",
     async (request, reply) => {
-      const course = courses.find((entry) => entry.id === request.params.courseId);
+      const course = await getCourse(request.params.courseId);
       if (!course) {
         return fail(reply, 404, "COURSE_NOT_FOUND", "Course not found");
       }
 
-      const roster = course.studentIds
-        .map((studentId) => users.find((user) => user.id === studentId))
-        .filter((user): user is User => Boolean(user));
+      const teacher = await getUser(course.teacherId);
+      const rosterPromises = course.studentIds.map((id) => getUser(id));
+      const roster = (await Promise.all(rosterPromises)).filter(
+        (u): u is User => Boolean(u),
+      );
+      const courseAssignments = await getAssignmentsByCourse(course.id);
 
       return {
         data: {
           course,
-          teacher: users.find((user) => user.id === course.teacherId) ?? null,
+          teacher: teacher ?? null,
           roster,
-          assignments: assignments.filter(
-            (assignment) => assignment.courseId === course.id,
-          ),
+          assignments: courseAssignments,
         },
       };
     },
@@ -51,15 +71,15 @@ export async function courseRoutes(app: FastifyInstance) {
   app.get<{ Params: { courseId: string } }>(
     "/courses/:courseId/assignments",
     async (request, reply) => {
-      const course = courses.find((entry) => entry.id === request.params.courseId);
+      const course = await getCourse(request.params.courseId);
       if (!course) {
         return fail(reply, 404, "COURSE_NOT_FOUND", "Course not found");
       }
 
       return {
-        data: assignments
-          .filter((assignment) => assignment.courseId === course.id)
-          .sort((a, b) => a.dueAt.localeCompare(b.dueAt)),
+        data: (await getAssignmentsByCourse(course.id)).sort(
+          (a, b) => a.dueAt.localeCompare(b.dueAt),
+        ),
       };
     },
   );
@@ -67,40 +87,36 @@ export async function courseRoutes(app: FastifyInstance) {
   app.get<{ Params: { assignmentId: string } }>(
     "/assignments/:assignmentId",
     async (request, reply) => {
-      const assignment = assignments.find(
-        (entry) => entry.id === request.params.assignmentId,
-      );
+      const assignment = await getAssignment(request.params.assignmentId);
       if (!assignment) {
         return fail(reply, 404, "ASSIGNMENT_NOT_FOUND", "Assignment not found");
       }
 
-      const course = courses.find((entry) => entry.id === assignment.courseId) ?? null;
-      return { data: { assignment, course } };
+      const course = await getCourse(assignment.courseId);
+      return { data: { assignment, course: course ?? null } };
     },
   );
 
   app.get<{ Params: { assignmentId: string } }>(
     "/assignments/:assignmentId/roster",
     async (request, reply) => {
-      const assignment = assignments.find(
-        (entry) => entry.id === request.params.assignmentId,
-      );
+      const assignment = await getAssignment(request.params.assignmentId);
       if (!assignment) {
         return fail(reply, 404, "ASSIGNMENT_NOT_FOUND", "Assignment not found");
       }
 
-      const course = courses.find((entry) => entry.id === assignment.courseId);
+      const course = await getCourse(assignment.courseId);
       if (!course) {
         return fail(reply, 404, "COURSE_NOT_FOUND", "Course not found");
       }
 
+      const allSubmissions = await getSubmissionsByAssignment(assignment.id);
+      const allUsers = await getUsers();
       const roster = course.studentIds.map((studentId) => {
-        const student = users.find((user) => user.id === studentId);
-        const submission = submissions.find(
-          (entry) =>
-            entry.assignmentId === assignment.id && entry.studentId === studentId,
+        const student = allUsers.find((u) => u.id === studentId);
+        const submission = allSubmissions.find(
+          (entry) => entry.studentId === studentId,
         );
-
         return {
           studentId,
           displayName: student?.displayName ?? "Unknown student",
@@ -119,9 +135,7 @@ export async function courseRoutes(app: FastifyInstance) {
     Params: { assignmentId: string };
     Body: { studentId?: string; attachments?: Attachment[] };
   }>("/assignments/:assignmentId/submissions", async (request, reply) => {
-    const assignment = assignments.find(
-      (entry) => entry.id === request.params.assignmentId,
-    );
+    const assignment = await getAssignment(request.params.assignmentId);
     if (!assignment) {
       return fail(reply, 404, "ASSIGNMENT_NOT_FOUND", "Assignment not found");
     }
@@ -131,12 +145,12 @@ export async function courseRoutes(app: FastifyInstance) {
       return fail(reply, 400, "INVALID_BODY", "studentId is required");
     }
 
-    const student = users.find((user) => user.id === studentId);
+    const student = await getUser(studentId);
     if (!student) {
       return fail(reply, 404, "STUDENT_NOT_FOUND", "Student not found");
     }
 
-    const course = courses.find((entry) => entry.id === assignment.courseId);
+    const course = await getCourse(assignment.courseId);
     if (!course?.studentIds.includes(studentId)) {
       return fail(reply, 403, "NOT_ENROLLED", "Student is not enrolled in this course");
     }
@@ -154,30 +168,28 @@ export async function courseRoutes(app: FastifyInstance) {
     const status: Submission["status"] =
       new Date(assignment.dueAt).getTime() < Date.now() ? "late" : "submitted";
 
-    const existing = submissions.find(
-      (entry) =>
-        entry.assignmentId === assignment.id && entry.studentId === studentId,
+    const existingSubmissions = await getSubmissionsByAssignment(assignment.id);
+    const existing = existingSubmissions.find(
+      (entry) => entry.studentId === studentId,
     );
 
     if (existing) {
-      existing.status = status;
-      existing.submittedAt = submittedAt;
-      existing.attachments = attachments;
-      return reply.code(200).send({ data: existing });
+      await updateSubmission(existing.id, {
+        status,
+        submittedAt,
+        attachments,
+      });
+      const updated = await getSubmission(existing.id);
+      return reply.code(200).send({ data: updated });
     }
 
-    const submission: Submission = {
-      id: randomUUID(),
+    const submission = await createSubmission({
       assignmentId: assignment.id,
       studentId,
       status,
       submittedAt,
       attachments,
-      grade: null,
-      effortScore: null,
-    };
-
-    submissions.push(submission);
+    });
     return reply.code(201).send({ data: submission });
   });
 }
