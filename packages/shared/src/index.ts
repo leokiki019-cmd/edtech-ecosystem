@@ -13,8 +13,11 @@ export interface User {
   id: string;
   displayName: string;
   email: string;
+  phone: string;
   role: Role;
   courseIds: string[];
+  passwordHash?: string;
+  isPhoneVerified?: boolean;
   createdAt: string;
 }
 

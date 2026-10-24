@@ -20,6 +20,11 @@
       <p id="assignment" class="assignment">No assignment detected</p>
     </section>
 
+    <section id="consent-banner" class="consent-banner hidden">
+      <p>Monitoring is off. Enable it in settings to record writing sessions.</p>
+      <button id="open-settings" type="button">Open settings</button>
+    </section>
+
     <section class="score-card">
       <div class="score-header">
         <span>Effort score</span>
@@ -54,6 +59,11 @@
       <span id="active-time" class="active-time">0s active</span>
       <button id="reset" type="button">Reset</button>
     </footer>
+
+    <section class="sync-bar">
+      <span id="sync-status" class="sync-status">Sync: –</span>
+      <a href="#" id="settings-link">Settings</a>
+    </section>
 
     <script src="popup.js"></script>
   </body>

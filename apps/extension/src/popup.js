@@ -11,6 +11,10 @@ const elements = {
   assignment: document.getElementById("assignment"),
   statusDot: document.getElementById("status-dot"),
   reset: document.getElementById("reset"),
+  consentBanner: document.getElementById("consent-banner"),
+  openSettings: document.getElementById("open-settings"),
+  settingsLink: document.getElementById("settings-link"),
+  syncStatus: document.getElementById("sync-status"),
 };
 
 let currentTabId = null;
@@ -72,9 +76,43 @@ function render(session, tab) {
   elements.activeTime.textContent = `${session.activeSeconds}s active`;
 }
 
+function openSettings() {
+  chrome.runtime.openOptionsPage();
+}
+
+function renderSyncStatus(status) {
+  if (!status?.consentEnabled) {
+    elements.consentBanner.classList.remove("hidden");
+    elements.syncStatus.textContent = "Sync: monitoring off";
+    return;
+  }
+  elements.consentBanner.classList.add("hidden");
+
+  if (status.needsReauth) {
+    elements.syncStatus.textContent = "Sync: session expired — sign in";
+    return;
+  }
+  if (!status.loggedIn) {
+    elements.syncStatus.textContent = "Sync: sign in via settings";
+    return;
+  }
+
+  const pending = status.pendingBatches ?? 0;
+  if (pending === 0) {
+    elements.syncStatus.textContent = "Sync: all uploaded";
+  } else {
+    elements.syncStatus.textContent = `Sync: ${pending} batch${pending === 1 ? "" : "es"} queued`;
+  }
+}
+
 async function refresh() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   currentTabId = tab?.id ?? null;
+
+  chrome.runtime
+    .sendMessage({ type: "get-sync-status" })
+    .then((response) => renderSyncStatus(response?.status))
+    .catch(() => {});
 
   if (currentTabId === null) {
     render(null, null);
@@ -87,6 +125,12 @@ async function refresh() {
   });
   render(response?.session ?? null, tab);
 }
+
+elements.openSettings.addEventListener("click", openSettings);
+elements.settingsLink.addEventListener("click", (event) => {
+  event.preventDefault();
+  openSettings();
+});
 
 elements.reset.addEventListener("click", async () => {
   if (currentTabId === null) {

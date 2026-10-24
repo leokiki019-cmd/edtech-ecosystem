@@ -46,13 +46,13 @@ class CourseCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.12),
+                      color: kPrimary,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       code,
-                      style: TextStyle(
-                        color: color,
+                      style: const TextStyle(
+                        color: Colors.white,
                         fontWeight: FontWeight.w800,
                         fontSize: 12,
                       ),
@@ -89,14 +89,12 @@ class CourseCard extends StatelessWidget {
                     icon: Icons.people_outline,
                     value: '$students',
                     label: 'Students',
-                    color: color,
                   ),
                   const SizedBox(width: 16),
                   _Stat(
                     icon: Icons.assignment_outlined,
                     value: '$assignments',
                     label: 'Assignments',
-                    color: color,
                   ),
                 ],
               ),
@@ -112,20 +110,18 @@ class _Stat extends StatelessWidget {
   final IconData icon;
   final String value;
   final String label;
-  final Color color;
 
   const _Stat({
     required this.icon,
     required this.value,
     required this.label,
-    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 15, color: color),
+        Icon(icon, size: 15, color: kPrimary),
         const SizedBox(width: 6),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,

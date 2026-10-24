@@ -2,9 +2,13 @@
   "manifest_version": 3,
   "name": "Integrity Lens",
   "description": "Process-based academic integrity monitoring: effort scores, paste tracking and AI platform tab-switch logging.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "minimum_chrome_version": "110",
   "permissions": ["storage", "tabs"],
+  "options_ui": {
+    "page": "src/options.html",
+    "open_in_tab": true
+  },
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "service_worker": "src/background.js",

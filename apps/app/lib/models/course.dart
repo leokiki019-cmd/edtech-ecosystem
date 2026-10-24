@@ -7,6 +7,8 @@ class Course {
     required this.studentIds,
     required this.term,
     required this.createdAt,
+    this.teacherName,
+    this.openAssignmentCount,
   });
 
   final String id;
@@ -17,6 +19,12 @@ class Course {
   final String term;
   final DateTime createdAt;
 
+  /// Summary fields included by the /courses list endpoint.
+  final String? teacherName;
+  final int? openAssignmentCount;
+
+  int get studentCount => studentIds.length;
+
   factory Course.fromJson(Map<String, dynamic> json) {
     return Course(
       id: json['id'] as String,
@@ -26,6 +34,8 @@ class Course {
       studentIds: List<String>.from(json['studentIds'] as List<dynamic>),
       term: json['term'] as String,
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+      teacherName: json['teacherName'] as String?,
+      openAssignmentCount: json['openAssignmentCount'] as int?,
     );
   }
 

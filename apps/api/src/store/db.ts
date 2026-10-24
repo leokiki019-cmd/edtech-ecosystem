@@ -23,14 +23,29 @@ function parseJson<T>(value: string | null, fallback: T): T {
   }
 }
 
+/**
+ * SQLite datetime(...) values are UTC but formatted as "YYYY-MM-DD HH:MM:SS".
+ * Normalize them to ISO-8601 ("YYYY-MM-DDTHH:MM:SSZ") so clients can parse
+ * them unambiguously. Values that already contain "T" are passed through.
+ */
+function normDate(value: string | null): string | null {
+  if (!value) return value;
+  if (value.includes("T")) return value;
+  return `${value.replace(" ", "T")}Z`;
+}
+
 function toUser(row: any): User {
+  // passwordHash is intentionally never mapped here: it must not leave the
+  // store. Auth code reads credentials through getUserAuth* helpers instead.
   return {
     id: row.id,
     displayName: row.display_name,
     email: row.email,
+    phone: row.phone,
     role: row.role as Role,
     courseIds: parseJson(row.course_ids, []),
-    createdAt: row.created_at,
+    isPhoneVerified: Boolean(row.is_phone_verified),
+    createdAt: normDate(row.created_at) ?? row.created_at,
   };
 }
 
@@ -42,7 +57,7 @@ function toCourse(row: any): Course {
     teacherId: row.teacher_id,
     studentIds: parseJson(row.student_ids, []),
     term: row.term,
-    createdAt: row.created_at,
+    createdAt: normDate(row.created_at) ?? row.created_at,
   };
 }
 
@@ -52,9 +67,9 @@ function toAssignment(row: any): Assignment {
     courseId: row.course_id,
     title: row.title,
     brief: row.brief,
-    dueAt: row.due_at,
+    dueAt: normDate(row.due_at) ?? row.due_at,
     status: row.status,
-    createdAt: row.created_at,
+    createdAt: normDate(row.created_at) ?? row.created_at,
   };
 }
 
@@ -64,7 +79,7 @@ function toSubmission(row: any): Submission {
     assignmentId: row.assignment_id,
     studentId: row.student_id,
     status: row.status,
-    submittedAt: row.submitted_at,
+    submittedAt: normDate(row.submitted_at),
     attachments: parseJson(row.attachments, []),
     grade: row.grade,
     effortScore: row.effort_score,
@@ -77,8 +92,8 @@ function toCalendarEvent(row: any): CalendarEvent {
     courseId: row.course_id,
     title: row.title,
     kind: row.kind,
-    startsAt: row.starts_at,
-    endsAt: row.ends_at,
+    startsAt: normDate(row.starts_at) ?? row.starts_at,
+    endsAt: normDate(row.ends_at),
   };
 }
 
@@ -98,7 +113,7 @@ function toMessage(row: any): ChatMessage {
     channelId: row.channel_id,
     authorId: row.author_id,
     body: row.body,
-    sentAt: row.sent_at,
+    sentAt: normDate(row.sent_at) ?? row.sent_at,
   };
 }
 
@@ -109,7 +124,91 @@ export function getUsers(): User[] {
 }
 
 export function getUser(userId: string): User | undefined {
-  return toUser(db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as any);
+  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as any;
+  if (!row) return undefined;
+  return toUser(row);
+}
+
+export function getUserByPhone(phone: string): User | undefined {
+  const row = db.prepare('SELECT * FROM users WHERE phone = ?').get(phone) as any;
+  if (!row) return undefined;
+  return toUser(row);
+}
+
+/** Credential lookup for password verification. Never expose the result. */
+export function getUserAuthByPhone(phone: string): { id: string; passwordHash: string | null } | undefined {
+  const row = db.prepare('SELECT id, password_hash FROM users WHERE phone = ?').get(phone) as any;
+  if (!row) return undefined;
+  return { id: row.id, passwordHash: row.password_hash };
+}
+
+/** Credential lookup for password verification. Never expose the result. */
+export function getUserAuthByEmail(email: string): { id: string; passwordHash: string | null } | undefined {
+  const row = db.prepare('SELECT id, password_hash FROM users WHERE email = ?').get(email) as any;
+  if (!row) return undefined;
+  return { id: row.id, passwordHash: row.password_hash };
+}
+
+export function createUser(input: {
+  id: string;
+  displayName: string;
+  email: string;
+  phone: string;
+  role: Role;
+  courseIds: string[];
+  passwordHash: string;
+  isPhoneVerified: number;
+  createdAt?: string;
+}): User {
+  const createdAt = input.createdAt || new Date().toISOString();
+  db.prepare(
+    `INSERT INTO users (id, display_name, email, phone, role, course_ids, password_hash, is_phone_verified, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    input.id,
+    input.displayName,
+    input.email,
+    input.phone,
+    input.role,
+    JSON.stringify(input.courseIds),
+    input.passwordHash,
+    input.isPhoneVerified,
+    createdAt,
+  );
+  return getUser(input.id)!;
+}
+
+export function updateUser(userId: string, updates: Partial<{
+  displayName: string;
+  email: string;
+  phone: string;
+  passwordHash: string;
+  isPhoneVerified: number;
+}>): void {
+  const sets: string[] = [];
+  const params: any[] = [];
+  if (updates.displayName !== undefined) {
+    sets.push('display_name = ?');
+    params.push(updates.displayName);
+  }
+  if (updates.email !== undefined) {
+    sets.push('email = ?');
+    params.push(updates.email);
+  }
+  if (updates.phone !== undefined) {
+    sets.push('phone = ?');
+    params.push(updates.phone);
+  }
+  if (updates.passwordHash !== undefined) {
+    sets.push('password_hash = ?');
+    params.push(updates.passwordHash);
+  }
+  if (updates.isPhoneVerified !== undefined) {
+    sets.push('is_phone_verified = ?');
+    params.push(updates.isPhoneVerified);
+  }
+  params.push(userId);
+  db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).run(...params);
 }
 
 /* ---------- courses ---------- */
@@ -119,7 +218,9 @@ export function getCourses(): Course[] {
 }
 
 export function getCourse(courseId: string): Course | undefined {
-  return toCourse(db.prepare('SELECT * FROM courses WHERE id = ?').get(courseId) as any);
+  const row = db.prepare('SELECT * FROM courses WHERE id = ?').get(courseId) as any;
+  if (!row) return undefined;
+  return toCourse(row);
 }
 
 export function getAssignmentsByCourse(courseId: string): Assignment[] {
@@ -131,9 +232,9 @@ export function getAssignmentsByCourse(courseId: string): Assignment[] {
 /* ---------- assignments ---------- */
 
 export function getAssignment(assignmentId: string): Assignment | undefined {
-  return toAssignment(
-    db.prepare('SELECT * FROM assignments WHERE id = ?').get(assignmentId) as any,
-  );
+  const row = db.prepare('SELECT * FROM assignments WHERE id = ?').get(assignmentId) as any;
+  if (!row) return undefined;
+  return toAssignment(row);
 }
 
 /* ---------- submissions ---------- */
@@ -145,9 +246,9 @@ export function getSubmissionsByAssignment(assignmentId: string): Submission[] {
 }
 
 export function getSubmission(submissionId: string): Submission | undefined {
-  return toSubmission(
-    db.prepare('SELECT * FROM submissions WHERE id = ?').get(submissionId) as any,
-  );
+  const row = db.prepare('SELECT * FROM submissions WHERE id = ?').get(submissionId) as any;
+  if (!row) return undefined;
+  return toSubmission(row);
 }
 
 export function createSubmission(input: {
@@ -240,9 +341,9 @@ export function getChannelsByCourse(courseId: string): ChatChannel[] {
 }
 
 export function getChannel(channelId: string): ChatChannel | undefined {
-  return toChannel(
-    db.prepare('SELECT * FROM chat_channels WHERE id = ?').get(channelId) as any,
-  );
+  const row = db.prepare('SELECT * FROM chat_channels WHERE id = ?').get(channelId) as any;
+  if (!row) return undefined;
+  return toChannel(row);
 }
 
 export function getMessages(channelId: string): ChatMessage[] {
@@ -357,4 +458,51 @@ export function setIntegrityFlags(studentId: string, assignmentId: string, flags
   for (const flag of flags) {
     stmt.run(sessionId, assignmentId, studentId, flag);
   }
+}
+
+/* ---------- SMS verification ---------- */
+
+export interface SmsCode {
+  id: string;
+  phone: string;
+  code: string;
+  expiresAt: string;
+  createdAt?: string;
+}
+
+export function createSmsCode(input: {
+  id: string;
+  phone: string;
+  code: string;
+  expiresAt: string;
+  createdAt?: string;
+}): SmsCode {
+  db.prepare(
+    `INSERT INTO sms_verification_codes (id, phone, code, expires_at, created_at)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(input.id, input.phone, input.code, input.expiresAt, input.createdAt || new Date().toISOString());
+  return input;
+}
+
+export function verifySmsCode(phone: string, code: string): boolean {
+  const row = db
+    .prepare('SELECT * FROM sms_verification_codes WHERE phone = ? AND code = ?')
+    .get(phone, code) as any;
+
+  if (!row) return false;
+
+  // Mark code as used by deleting it (one-time use)
+  db.prepare('DELETE FROM sms_verification_codes WHERE id = ?').run(row.id);
+
+  // Compare expiry in JS: SQLite string comparison breaks on the "T" in
+  // ISO-8601 timestamps (same-day codes would never expire).
+  const expiresAt = normDate(row.expires_at);
+  if (!expiresAt || new Date(expiresAt).getTime() <= Date.now()) {
+    return false;
+  }
+  return true;
+}
+
+export function markPhoneVerified(phone: string): void {
+  db.prepare('UPDATE users SET is_phone_verified = 1 WHERE phone = ?').run(phone);
 }

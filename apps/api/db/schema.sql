@@ -7,8 +7,11 @@ CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   display_name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
+  phone TEXT NOT NULL UNIQUE,
   role TEXT NOT NULL CHECK (role IN ('student', 'teacher', 'admin')),
   course_ids TEXT NOT NULL DEFAULT '[]',
+  password_hash TEXT,
+  is_phone_verified INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
 );
 
@@ -122,6 +125,17 @@ CREATE TABLE IF NOT EXISTS integrity_flags (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- No FK on phone: verification codes are transient and must not crash when
+-- the account lookup fails; routes validate the account explicitly.
+CREATE TABLE IF NOT EXISTS sms_verification_codes (
+  id TEXT PRIMARY KEY,
+  phone TEXT NOT NULL,
+  code TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_sms_codes_phone ON sms_verification_codes(phone);
 CREATE INDEX IF NOT EXISTS idx_assignments_course ON assignments(course_id);
 CREATE INDEX IF NOT EXISTS idx_submissions_assignment ON submissions(assignment_id);
 CREATE INDEX IF NOT EXISTS idx_submissions_student ON submissions(student_id);

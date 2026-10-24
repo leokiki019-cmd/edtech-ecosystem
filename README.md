@@ -11,15 +11,28 @@ A converted Word copy is available at [`Project_Proposal.docx`](./Project_Propos
 
 | Area | Status |
 | --- | --- |
-| API (`apps/api`) | Working Fastify + TypeScript scaffold with seeded in-memory data |
-| Browser extension (`apps/extension`) | Working Manifest V3 scaffold: typing/paste telemetry, effort score, AI tab-switch tracking |
-| Flutter app (`apps/app`) | Static UI scaffold: dashboard, courses, calendar, chat, integrity |
+| API (`apps/api`) | Working Fastify + TypeScript service on SQLite with auth (scrypt passwords, HMAC-signed tokens, SMS verification codes) |
+| Browser extension (`apps/extension`) | Manifest v0.2.0: consent-gated telemetry, signed batch upload to the API, options page with account login, retry queue |
+| Flutter app (`apps/app`) | Wired to the API: login / signup / SMS verification, auth-gated routing, live courses, calendar, chat, integrity screens |
 | Rust core (`crates/telemetry-core`) | Event model, effort scoring, integrity flags, and unit tests; not yet compiled in this environment |
-| Data and auth | In-memory data only; no database, authentication, or authorization yet |
 
-The API has been typechecked, built, and smoke-tested. The extension has been
-syntax-checked. Flutter and Rust are not installed on the current machine, so
-those two components have not been run yet.
+The API has been typechecked, built, and smoke-tested end to end (auth flow
+included). The extension scripts are syntax-checked and the manifest is valid.
+The Flutter app passes `flutter analyze` with no errors, builds for web in
+release mode, and passes an 8-case integration test suite against the live API.
+Rust is not installed on this machine, so that component has not been run.
+
+### Demo accounts
+
+All seeded accounts share the password `password123`:
+
+| Phone | Role | Name |
+| --- | --- | --- |
+| `+15550001001` | teacher | Dr. Maya Chen |
+| `+15550001002` | student | Alex Rivera |
+| `+15550001003` | student | Priya Nair |
+| `+15550001004` | student | Jordan Lee |
+| `+15550001005` | admin | Sam Okafor |
 
 ## Components
 
@@ -59,6 +72,18 @@ student writes:
 - Cursor movement distance.
 - Tab switches to supported generative AI platforms.
 
+Version 0.2.0 adds the sync pipeline and consent flow:
+
+- **Consent gate**: nothing is recorded or uploaded until the student enables
+  monitoring on the options page. The options page opens automatically on
+  install and explains exactly what is and is not recorded.
+- **Account link**: the options page signs in against the API
+  (`/api/v1/auth/login`) so batches carry the real student identity.
+- **Signed batch upload**: queued events are flushed every 15 seconds as
+  HMAC-SHA256-signed batches to `POST /api/v1/telemetry/batches`, with offline
+  queueing, exponential-backoff retries, and a 401 → "sign in again" state.
+- **Popup sync status**: the popup now shows consent state and queued batches.
+
 The popup shows the live effort score, keystrokes, pastes, pasted characters, AI
 tab switches, and active time. Password and hidden inputs, as well as elements
 marked with `data-sensitive`, are ignored. Sessions are stored per tab in
@@ -69,16 +94,20 @@ Supported AI hosts: `chatgpt.com`, `chat.openai.com`, `claude.ai`,
 
 ### 3. Flutter app (`apps/app`)
 
-Cross-platform client scaffold with a five-tab shell:
+Cross-platform client with a five-tab shell and full auth flow:
 
-- Dashboard with deadline cards and summary metrics.
-- Courses with course cards.
-- Calendar with upcoming events.
-- Chat with channel list.
-- Integrity with an effort score card and privacy notice.
+- **Auth gate**: the router redirects signed-out users to login; sign up, sign
+  in, and SMS verification ("forgot password") all round-trip the API. Tokens
+  are held in memory for the session.
+- Dashboard with greeting, deadline cards, and live summary metrics.
+- Courses loaded from the API with teacher names and open-assignment counts.
+- Calendar with upcoming events for the signed-in user's role.
+- Chat with course channels; messages post as the signed-in user.
+- Integrity with the real effort score for the first open assignment, and an
+  honest empty state until the extension records telemetry.
 
-The screens currently use static sample data. The next step is wiring them to
-the API.
+The API base URL defaults to `http://localhost:4000` and can be overridden at
+build time with `--dart-define=API_BASE_URL=https://your-api.example.com`.
 
 ### 4. Shared types (`packages/shared`)
 
@@ -152,21 +181,28 @@ Environment variables are documented in `apps/api/.env.example`:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `NODE_ENV` | `development` | Log level selection |
+| `NODE_ENV` | `development` | Log level selection; also controls whether SMS codes are echoed in responses |
 | `HOST` | `0.0.0.0` | Bind address |
 | `PORT` | `4000` | HTTP port |
 | `CORS_ORIGIN` | `*` | Allowed CORS origin |
+| `AUTH_SECRET` | dev-only fallback | HMAC key for bearer tokens; **set this in production** |
+
+The database is a single SQLite file at `apps/api/data/edtech.sqlite`, created
+and seeded automatically on first run (delete the file to re-seed).
 
 ### Load the extension
 
 1. Open `chrome://extensions`.
 2. Enable **Developer mode**.
-3. Choose **Load unpacked** and select `F:\Project\apps\extension`.
+3. Choose **Load unpacked** and select `apps/extension`.
 
-Open any page, type into a document, and click the extension icon to see the
-live session score. Use `?assignmentId=a-001` in the page URL or a
+The settings page opens on first install: sign in with a seeded account
+(e.g. `+15550001002` / `password123`), then enable monitoring consent. Open any
+page, type into a document, and click the extension icon to see the live
+session score and sync status. Use `?assignmentId=a-001` in the page URL or a
 `<meta name="edtech-assignment-id" content="a-001">` tag to attach a session to
-an assignment.
+an assignment (sessions without an assignment stay local and are never
+uploaded).
 
 ### Run the Flutter app
 
@@ -180,6 +216,15 @@ flutter run
 `flutter create .` generates the platform folders (`android`, `ios`, `web`,
 `windows`, etc.) that are not checked in yet. It should preserve the existing
 `lib/main.dart`, `pubspec.yaml`, and `analysis_options.yaml`.
+
+To run the release web build locally:
+
+```powershell
+flutter build web --release
+# serve apps/app/build/web with any static server, e.g. on port 8080
+```
+
+The app signs in against the API at `http://localhost:4000` by default.
 
 ### Test the Rust core
 
@@ -196,6 +241,11 @@ Base path: `/api/v1` (except `/health`).
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/health` | Service health check |
+| POST | `/api/v1/auth/register` | Create an account (student or teacher); returns user + token |
+| POST | `/api/v1/auth/login` | Sign in with phone/email + password; returns user + token |
+| POST | `/api/v1/auth/send-sms` | Send an SMS verification code (echoed in dev only) |
+| POST | `/api/v1/auth/verify-sms` | Verify the code; marks the phone verified and returns a token |
+| GET | `/api/v1/auth/me` | Resolve the bearer token to the current user |
 | GET | `/courses` | List courses with teacher name, student count, and open assignment count |
 | GET | `/courses/:courseId` | Course detail with teacher, roster, and assignments |
 | GET | `/courses/:courseId/assignments` | Assignments for a course, sorted by due date |
@@ -306,12 +356,13 @@ five seconds to avoid counting long idle periods.
 | --- | --- |
 | `npm run typecheck` | Passed for `@edtech/api` and `@edtech/shared` |
 | `npm run build:api` | Passed; ESM bundle generated in `apps/api/dist` |
-| API smoke test | `/health` ok; 1 course; 5 calendar events; 2 telemetry events accepted; score 45; flag `large_paste`; report linked to submission `s-001`; roster 3 students; 2 channels |
-| Extension syntax | `node --check` passed for background, content, and popup scripts |
-| Manifest | Valid Manifest V3 JSON |
-| Secret scan | No credentials or private keys found in the staged files |
-| Git commit | 38 files committed as `41e1ea3` |
-| Flutter | Not run; Flutter SDK not installed |
+| API smoke test | All endpoints verified, including the full auth flow: seeded login (`password123`), wrong-password 401, register, signed-token `/me`, forged-token 401, SMS send/verify/reuse-rejection, telemetry ingest (score 45, `large_paste`), integrity report, ISO-8601 dates |
+| Extension syntax | `node --check` passed for background, content, popup, and options scripts |
+| Manifest | Valid Manifest V3 JSON with `options_ui` |
+| `flutter analyze` | No errors and no warnings from new code |
+| `flutter build web --release` | Passed; production bundle in `apps/app/build/web` |
+| Flutter integration tests | 8/8 passed against the live API (login, wrong password, courses, assignments, calendar, chat, integrity, register + SMS flow) — see `apps/app/test/api_integration_test.dart` |
+| Flutter UI smoke | Web build serves and renders; auth gate redirects to the login screen |
 | Rust | Not run; Rust toolchain not installed |
 
 See [`docs/IMPLEMENTATION_NOTES.md`](./docs/IMPLEMENTATION_NOTES.md) for the
@@ -319,23 +370,20 @@ chronological record of setup and verification.
 
 ## Known limitations and next steps
 
-1. Replace the in-memory store with a database (PostgreSQL or SQLite) and add
-   migrations.
-2. Add authentication, role-based authorization, and per-user data scoping.
-3. Implement server-side verification of telemetry signatures and encrypted
-   client logs.
-4. Wire the Flutter app to the API and add state management.
-5. Build the Rust core for FFI and WASM, then integrate it with Flutter via
+1. Verify telemetry signatures server-side (the batches are HMAC-signed by the
+   extension, but the API does not verify them yet) and move to asymmetric keys.
+2. Enforce bearer-token authorization on the classroom/telemetry routes (tokens
+   are issued and verified for `/auth/me`, but other routes are still open).
+3. Build the Rust core for FFI and WASM, then integrate it with Flutter via
    `flutter_rust_bridge`.
-6. Persist telemetry event streams to support time-lapse writing replay.
-7. Implement Google Sheets/Excel sync, automated missing-assignment nudges, and
+4. Persist per-assignment telemetry streams to support time-lapse writing replay.
+5. Implement Google Sheets/Excel sync, automated missing-assignment nudges, and
    the teacher AI assistant.
-8. Add push notifications for deadlines and overdue assignments.
-9. Add automated tests for API routes and extension scoring parity.
-10. Add CI for typecheck, build, extension checks, and Rust tests; add Docker and
-    deployment configuration.
-11. Scope extension host permissions before distribution and add an explicit
-    student consent flow.
+6. Add push notifications for deadlines and overdue assignments.
+7. Add CI for typecheck, build, extension checks, Flutter analyze/test, and Rust
+   tests.
+8. Scope extension host permissions before distribution (optional_host_permissions
+   with per-site grants instead of `<all_urls>`).
 
 ## Repository access
 

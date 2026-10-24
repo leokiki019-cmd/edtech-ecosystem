@@ -185,3 +185,51 @@ button {
 button:hover {
   background: rgba(56, 189, 248, 0.22);
 }
+
+.consent-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.consent-banner p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--warn);
+}
+
+.consent-banner.hidden {
+  display: none;
+}
+
+.sync-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.sync-status {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.sync-bar a {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.sync-bar a:hover {
+  text-decoration: underline;
+}

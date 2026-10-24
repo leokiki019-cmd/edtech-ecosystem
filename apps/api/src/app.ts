@@ -4,6 +4,7 @@ import type { FastifyError } from "fastify";
 import type { ApiError } from "@edtech/shared";
 import { config } from "./config";
 import { initDb } from "./db";
+import { authRoutes } from "./routes/auth";
 import { classroomRoutes } from "./routes/classroom";
 import { courseRoutes } from "./routes/courses";
 import { telemetryRoutes } from "./routes/telemetry";
@@ -29,6 +30,7 @@ export async function buildApp() {
   await app.register(courseRoutes, { prefix: "/api/v1" });
   await app.register(telemetryRoutes, { prefix: "/api/v1" });
   await app.register(classroomRoutes, { prefix: "/api/v1" });
+  await app.register(authRoutes, { prefix: "/api/v1/auth" });
 
   app.setNotFoundHandler((request, reply) => {
     const error: ApiError = {

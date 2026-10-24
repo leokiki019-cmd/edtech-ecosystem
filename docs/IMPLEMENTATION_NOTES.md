@@ -192,7 +192,95 @@ generated or shared. Owner access is provided by the GitHub account itself.
 
 These files were added after commit `41e1ea3` and may be committed separately.
 
-## 7. Recommended next steps
+## 7. Session 2 (2026-10-24): database, auth, extension sync, app finalization
+
+### API hardening and fixes
+
+The SQLite + auth layer started in the previous session was completed and
+fixed. Bugs found by smoke testing and corrected:
+
+1. Seeded users could not log in (seed stored placeholder bcrypt strings while
+   the auth code hashed with unsalted SHA-256). Replaced with scrypt
+   (`scrypt$salt$hash`, per-user 16-byte salt, `timingSafeEqual` compare) and
+   real hashes of the demo password `password123`.
+2. `passwordHash` leaked in register/login/course-roster responses. The store
+   mapper no longer includes it; credential reads go through dedicated
+   `getUserAuthByPhone`/`getUserAuthByEmail` lookups, and auth routes strip it
+   before serializing.
+3. Bearer tokens were unsigned base64 (trivially forged). Now HMAC-SHA256 with
+   a 7-day expiry, verified with `timingSafeEqual`; secret from `AUTH_SECRET`.
+4. SMS code expiry used SQLite string comparison against an ISO timestamp, so
+   same-day codes never expired. Expiry is now compared in JS; codes are
+   single-use (deleted on verify); verified phones are marked verified.
+5. `send-sms` for an unknown phone crashed with a 500 (FK violation); now 404,
+   and the FK on `sms_verification_codes.phone` was removed.
+6. `getUser`/`getCourse`/`getAssignment`/`getSubmission`/`getChannel` threw on
+   missing rows (500 instead of 404); all now return `undefined`.
+7. SQLite `datetime()` values (`YYYY-MM-DD HH:MM:SS`, no zone) leaked to
+   clients; the store normalizes them to ISO-8601 UTC.
+8. Registration now rejects roles other than student/teacher.
+
+Verified: typecheck, tsup build, and a full curl smoke test of the auth flow
+(seeded login, wrong password 401, register, `/me`, forged token 401, SMS
+send/verify/reuse, telemetry ingest, integrity report, ISO dates, no password
+hash in course detail).
+
+### Browser extension v0.2.0
+
+- Consent gate: capture and upload are disabled until the student opts in on
+  the new options page; content script attaches/detaches via storage events.
+- Options page (`src/options.html`): API URL, account sign-in against
+  `/api/v1/auth/login`, consent toggle with an explicit privacy explanation,
+  and sync-status panel.
+- Background service worker: per-tab event buffering, 15-second flush to
+  `POST /api/v1/telemetry/batches` as HMAC-SHA256-signed batches (WebCrypto
+  install key in `chrome.storage.local`), durable offline queue with
+  exponential-backoff retry, 401 → needs-reauth state, batch cap (200 batches /
+  5000 events per tab).
+- Popup: consent banner, "open settings" shortcut, and sync status
+  (queued batches, expired session, signed-out).
+- Sessions without an assignment are never uploaded (stays local).
+
+Verified with `node --check` on all four scripts and JSON parse of the manifest.
+
+### Flutter app finalization
+
+- `main.dart` provides `AuthProvider`; the GoRouter uses it as
+  `refreshListenable` with a redirect guard (signed-out → `/login`).
+- New routes: `/login`, `/signup`, `/verify-sms` (new screen wired to the
+  send/verify SMS API). Login and signup navigation switched from dead
+  `Navigator.pushNamed` calls to GoRouter pushes.
+- Drawer: shows the signed-in user's name/role, tab items actually switch
+  tabs, sign-out wired; the desktop rail gained a sign-out button.
+- Dashboard greets the signed-in user, loads calendar + courses in parallel,
+  and dropped the hard-coded "Current effort 84" tile (that number was fake).
+- Courses screen loads live data (teacher names, student and open-assignment
+  counts via new summary fields on the `Course` model).
+- Chat posts as the signed-in user; message ownership uses the real user id.
+- Integrity screen uses the signed-in student and their first open assignment;
+  `getIntegrityReportOrNull` returns null on 404 and the UI shows an honest
+  "No writing sessions yet" empty state instead of fabricated scores.
+- `AppConfig.apiBaseUrl` now defaults to `http://localhost:4000` (the old
+  default pointed at the static Netlify site, not the API) and supports
+  `--dart-define=API_BASE_URL`.
+
+Verified: `flutter analyze` (no errors, no new warnings),
+`flutter build web --release` (86.8s, bundle in `build/web`), and a new
+integration suite `test/api_integration_test.dart` — 8/8 passing against the
+running API (login, wrong password, courses, assignments, calendar, chat,
+integrity, register + token + SMS flow). The release web build was served
+locally and confirmed to render and redirect to the login screen; typing into
+canvas-rendered Flutter fields cannot be driven by CDP synthetic events, so the
+in-browser login click-through was not automated.
+
+### Known gaps after this session
+
+- The API does not verify extension batch signatures yet, and only `/auth/me`
+  enforces bearer tokens; other routes remain open.
+- Flutter auth state is in-memory only (a refresh signs you out).
+- Rust core still uncompiled (no toolchain on this machine).
+
+## 8. Recommended next steps
 
 1. Add authentication and role-based access control before exposing the API
    beyond local development.

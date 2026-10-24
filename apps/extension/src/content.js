@@ -27,6 +27,25 @@
   let lastCursorAt = 0;
   let lastCursorX = null;
   let lastCursorY = null;
+  let consentEnabled = false;
+
+  // Capture only runs when the student has enabled monitoring in settings.
+  try {
+    chrome.runtime.sendMessage({ type: "get-consent" }, (response) => {
+      consentEnabled = Boolean(response?.enabled);
+    });
+  } catch {
+    consentEnabled = false;
+  }
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "sync" && changes.settings) {
+      consentEnabled = Boolean(changes.settings.newValue?.consentEnabled);
+      if (!consentEnabled) {
+        queue = [];
+      }
+    }
+  });
 
   function isSensitiveTarget(target) {
     if (!(target instanceof HTMLElement)) {
@@ -42,6 +61,9 @@
   }
 
   function enqueue(type, payload) {
+    if (!consentEnabled) {
+      return;
+    }
     queue.push({
       type,
       payload,

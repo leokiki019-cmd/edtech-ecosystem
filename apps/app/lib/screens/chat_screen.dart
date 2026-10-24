@@ -1,8 +1,10 @@
+import 'package:edtech_app/auth/auth_provider.dart';
 import 'package:edtech_app/models/channel.dart';
 import 'package:edtech_app/models/chat_message.dart';
 import 'package:edtech_app/services/api_service.dart';
 import 'package:edtech_app/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../widgets/hover_scale.dart';
 import '../widgets/message_bubble.dart';
 
@@ -65,12 +67,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _sendMessage() async {
     final body = _controller.text.trim();
-    if (body.isEmpty || _selected == null) return;
+    final userId = context.read<AuthProvider>().user?.id;
+    if (body.isEmpty || _selected == null || userId == null) return;
     _controller.clear();
     try {
       await ApiService.instance.postMessage(
         channelId: _selected!.id,
-        authorId: 'u-student-1',
+        authorId: userId,
         body: body,
       );
       await _selectChannel(_selected!);
@@ -185,9 +188,11 @@ class _ChatScreenState extends State<ChatScreen> {
                           itemBuilder: (context, index) {
                             final message =
                                 _messages[_messages.length - 1 - index];
+                            final userId =
+                                context.watch<AuthProvider>().user?.id;
                             return MessageBubble(
                               message: message,
-                              isOwn: message.authorId == 'u-student-1',
+                              isOwn: message.authorId == userId,
                             );
                           },
                         ),
@@ -204,14 +209,17 @@ class _ChatScreenState extends State<ChatScreen> {
           child: Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _controller,
-                  decoration: const InputDecoration(
-                    hintText: 'Write a message...',
-                    border: OutlineInputBorder(),
-                    isDense: true,
+                child: Tooltip(
+                  message: 'Send message (Enter)',
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      hintText: 'Write a message...',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    onSubmitted: (_) => _sendMessage(),
                   ),
-                  onSubmitted: (_) => _sendMessage(),
                 ),
               ),
               const SizedBox(width: 8),

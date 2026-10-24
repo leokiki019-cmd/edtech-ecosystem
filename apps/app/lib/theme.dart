@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 
-/// Lively, vibrant theme with gradient accents and playful shadows.
-const kPrimary = Color(0xFF7C3AED);   // vivid violet
-const kPrimaryDark = Color(0xFF5B21B6);
-const kAccent = Color(0xFF22D3EE);    // bright cyan
-const kAccentDark = Color(0xFF0891B2);
+/// Sharp orange theme with white-on-orange icon accents.
+const kPrimary = Color(0xFFFF6A00);   // sharp orange
+const kPrimaryDark = Color(0xFFE65C00);
+const kAccent = Color(0xFFFF8A3D);    // bright tangerine
+const kAccentDark = Color(0xFFCC5500);
 const kSurface = Color(0xFFFFFFFF);
-const kBackground = Color(0xFFF0F9FF); // light cyan-blue wash
+const kBackground = Color(0xFFFFF7F2); // warm off-white wash
 const kCard = Color(0xFFFFFFFF);
-const kTextPrimary = Color(0xFF1E1B4B);
-const kTextSecondary = Color(0xFF6B7280);
-const kBorder = Color(0xFFE5E7EB);
+const kTextPrimary = Color(0xFF2B1608);
+const kTextSecondary = Color(0xFF7A6A60);
+const kBorder = Color(0xFFF0E3DA);
 const kSuccess = Color(0xFF34D399);
 const kWarning = Color(0xFFFBBF24);
 const kError = Color(0xFFF87171);
 const kPink = Color(0xFFEC4899);
-const kOrange = Color(0xFFF97316);
+const kOrange = Color(0xFFFF6A00);
 
 final appTheme = ThemeData(
   useMaterial3: true,
@@ -58,6 +58,12 @@ final appTheme = ThemeData(
 
 /// Gradient helper for cards and buttons.
 LinearGradient livelyGradient(Color start, Color end) => LinearGradient(
+      colors: [start, end],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
+
+LinearGradient linearGradient(Color start, Color end) => LinearGradient(
       colors: [start, end],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,

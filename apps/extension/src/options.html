@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Integrity Lens Settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <header class="header">
+        <h1>Integrity Lens</h1>
+        <p class="sub">Process-based integrity monitoring settings</p>
+      </header>
+
+      <section class="card">
+        <h2>1. Connect your class account</h2>
+        <p class="hint">
+          Sign in so writing sessions can be attached to your account and assignments.
+          Credentials are sent only to your school API, never stored by the extension.
+        </p>
+        <div class="row">
+          <label for="api-url">API base URL</label>
+          <input id="api-url" type="url" placeholder="http://localhost:4000" />
+        </div>
+        <div class="row">
+          <label for="login-id">Phone or email</label>
+          <input id="login-id" type="text" placeholder="+15550001002" autocomplete="username" />
+        </div>
+        <div class="row">
+          <label for="login-password">Password</label>
+          <input id="login-password" type="password" autocomplete="current-password" />
+        </div>
+        <div class="actions">
+          <button id="login" type="button">Sign in</button>
+          <button id="logout" type="button" class="ghost">Sign out</button>
+          <button id="test-connection" type="button" class="ghost">Test connection</button>
+        </div>
+        <p id="account-status" class="status"></p>
+      </section>
+
+      <section class="card">
+        <h2>2. Consent &amp; privacy</h2>
+        <p class="hint">
+          Integrity Lens records <strong>typing cadence, paste volume, cursor movement,
+          and visits to AI platform tabs</strong>. It never records what you type:
+          key content, page contents, and password or hidden fields are ignored, and
+          elements marked <code>data-sensitive</code> are skipped.
+        </p>
+        <label class="consent">
+          <input id="consent" type="checkbox" />
+          <span>
+            I understand what is recorded and agree to share writing-process telemetry
+            with my instructor for this course.
+          </span>
+        </label>
+        <p id="consent-status" class="status"></p>
+      </section>
+
+      <section class="card">
+        <h2>3. Sync status</h2>
+        <dl class="stats">
+          <div><dt>Pending batches</dt><dd id="stat-pending">–</dd></div>
+          <div><dt>Queued events</dt><dd id="stat-events">–</dd></div>
+          <div><dt>Last upload</dt><dd id="stat-last-upload">–</dd></div>
+          <div><dt>Last error</dt><dd id="stat-error">–</dd></div>
+        </dl>
+        <div class="actions">
+          <button id="flush" type="button" class="ghost">Upload now</button>
+        </div>
+      </section>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>
