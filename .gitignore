@@ -33,3 +33,6 @@ Desktop.ini
 
 # Local Netlify folder
 .netlify
+
+# Netlify CLI agents
+.agents/
