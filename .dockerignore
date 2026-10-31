@@ -1,0 +1,29 @@
+# Docker
+node_modules/
+dist/
+build/
+*.log
+.env
+.env.*
+!.env.example
+.git/
+.github/
+docs/
+*.md
+*.sqlite
+*.sqlite3
+data/
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Flutter / Dart
+.dart_tool/
+.build/
+*.iml
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

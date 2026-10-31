@@ -1,0 +1,19 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - HOST=0.0.0.0
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - AUTH_SECRET=${AUTH_SECRET:-edtech-dev-secret-change-me}
+    volumes:
+      - edtech-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  edtech-data:
