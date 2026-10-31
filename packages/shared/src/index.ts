@@ -31,6 +31,31 @@ export interface Course {
   createdAt: string;
 }
 
+export interface College {
+  id: string;
+  name: string;
+  shortName: string;
+  createdAt: string;
+}
+
+/** Programme panel headings as printed on the CTTC admissions flyer. */
+export type DepartmentCategory =
+  | "3 Years"
+  | "2 Years"
+  | "6 Months"
+  | "2 Years Paramedical";
+
+export interface Department {
+  id: string;
+  collegeId: string;
+  name: string;
+  code: string;
+  category: DepartmentCategory;
+  /** 36 = DAE, 24 = certificates/paramedical, 6 = short courses. */
+  durationMonths: number;
+  createdAt: string;
+}
+
 export type AssignmentStatus = "draft" | "open" | "closed";
 export type SubmissionStatus = "pending" | "submitted" | "graded" | "late" | "missing";
 

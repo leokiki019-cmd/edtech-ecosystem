@@ -4,8 +4,10 @@ import {
   createSubmission,
   getAssignment,
   getAssignmentsByCourse,
+  getColleges,
   getCourse,
   getCourses,
+  getDepartments,
   getSubmission,
   getSubmissionsByAssignment,
   getUser,
@@ -21,6 +23,23 @@ const fail = (
 ) => reply.code(statusCode).send({ error: { code, message } } satisfies ApiError);
 
 export async function courseRoutes(app: FastifyInstance) {
+  // Live college profile: name + departments served from SQLite so the app
+  // always reflects the current database state.
+  app.get("/college", async () => {
+    const college = getColleges()[0];
+    if (!college) {
+      return { data: null };
+    }
+    const departments = getDepartments(college.id);
+    return {
+      data: {
+        ...college,
+        departments,
+        departmentCount: departments.length,
+      },
+    };
+  });
+
   app.get("/courses", async () => {
     const courses = await getCourses();
     const users = await getUsers();

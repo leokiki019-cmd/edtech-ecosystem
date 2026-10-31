@@ -5,7 +5,9 @@ import type {
   CalendarEvent,
   ChatChannel,
   ChatMessage,
+  College,
   Course,
+  Department,
   EffortScore,
   IntegrityFlag,
   Role,
@@ -57,6 +59,27 @@ function toCourse(row: any): Course {
     teacherId: row.teacher_id,
     studentIds: parseJson(row.student_ids, []),
     term: row.term,
+    createdAt: normDate(row.created_at) ?? row.created_at,
+  };
+}
+
+function toCollege(row: any): College {
+  return {
+    id: row.id,
+    name: row.name,
+    shortName: row.short_name,
+    createdAt: normDate(row.created_at) ?? row.created_at,
+  };
+}
+
+function toDepartment(row: any): Department {
+  return {
+    id: row.id,
+    collegeId: row.college_id,
+    name: row.name,
+    code: row.code,
+    category: row.category as Department['category'],
+    durationMonths: row.duration_months,
     createdAt: normDate(row.created_at) ?? row.created_at,
   };
 }
@@ -227,6 +250,24 @@ export function getAssignmentsByCourse(courseId: string): Assignment[] {
   return (db
     .prepare('SELECT * FROM assignments WHERE course_id = ? ORDER BY due_at')
     .all(courseId) as unknown as any[]).map(toAssignment);
+}
+
+/* ---------- college ---------- */
+
+export function getColleges(): College[] {
+  return (db.prepare('SELECT * FROM colleges ORDER BY name').all() as unknown as any[]).map(toCollege);
+}
+
+export function getCollege(collegeId: string): College | undefined {
+  const row = db.prepare('SELECT * FROM colleges WHERE id = ?').get(collegeId) as any;
+  if (!row) return undefined;
+  return toCollege(row);
+}
+
+export function getDepartments(collegeId: string): Department[] {
+  return (db
+    .prepare('SELECT * FROM departments WHERE college_id = ? ORDER BY name')
+    .all(collegeId) as unknown as any[]).map(toDepartment);
 }
 
 /* ---------- assignments ---------- */

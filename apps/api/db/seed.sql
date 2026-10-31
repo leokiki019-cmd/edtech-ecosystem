@@ -1,6 +1,38 @@
 -- Seed data matching the original in-memory store
 -- All demo accounts share the password "password123" (scrypt hash).
 
+-- College reference data (idempotent: INSERT OR IGNORE)
+INSERT OR IGNORE INTO colleges (id, name, short_name, created_at) VALUES
+('col-cttc', 'Christian Technical Training Center', 'CTTC', '2026-01-01T00:00:00Z');
+
+-- Department/programme reference data. Mirrors the CTTC admissions flyer:
+-- four programme panels (3-year DAE, 2-year certificates, 6-month
+-- certificates, 2-year paramedical). Seeded when the table is empty;
+-- db.ts rebuilds the table when the schema shape changes.
+INSERT OR IGNORE INTO departments (id, college_id, name, code, category, duration_months, created_at) VALUES
+-- 3 YEARS PROGRAMMES (DAE — qualification: Matric Science)
+('dept-arc', 'col-cttc', 'Architecture', 'ARC', '3 Years', 36, '2026-01-01T00:00:00Z'),
+('dept-civ', 'col-cttc', 'Civil Engineering Technology', 'CIV', '3 Years', 36, '2026-01-01T00:00:00Z'),
+('dept-cit', 'col-cttc', 'Computer Info Tech.', 'CIT', '3 Years', 36, '2026-01-01T00:00:00Z'),
+('dept-eee', 'col-cttc', 'Electrical Technology', 'EEE', '3 Years', 36, '2026-01-01T00:00:00Z'),
+('dept-ece', 'col-cttc', 'Electronics Technology', 'ECE', '3 Years', 36, '2026-01-01T00:00:00Z'),
+('dept-mec', 'col-cttc', 'Mechanical', 'MEC', '3 Years', 36, '2026-01-01T00:00:00Z'),
+-- 2 YEARS PROGRAMMES (qualification: Matric)
+('dept-adm', 'col-cttc', 'Auto & Diesel Mechanic', 'ADM', '2 Years', 24, '2026-01-01T00:00:00Z'),
+('dept-dft', 'col-cttc', 'Drafting Civil', 'DFT', '2 Years', 24, '2026-01-01T00:00:00Z'),
+('dept-elc', 'col-cttc', 'Electrician', 'ELC', '2 Years', 24, '2026-01-01T00:00:00Z'),
+-- 6 MONTHS PROGRAMMES (qualification: Middle)
+('dept-cnc', 'col-cttc', 'CNC Programmer', 'CNC', '6 Months', 6, '2026-01-01T00:00:00Z'),
+('dept-mac', 'col-cttc', 'Machinist', 'MAC', '6 Months', 6, '2026-01-01T00:00:00Z'),
+('dept-aec', 'col-cttc', 'Auto Electrician', 'AEC', '6 Months', 6, '2026-01-01T00:00:00Z'),
+-- 2 YEARS PARAMEDICAL COURSES (Punjab Medical Faculty)
+('dept-ott', 'col-cttc', 'FSc. Operation Theatre Technology', 'OTT', '2 Years Paramedical', 24, '2026-01-01T00:00:00Z'),
+('dept-rad', 'col-cttc', 'FSc. Radiography & Medical Imaging Technology', 'RAD', '2 Years Paramedical', 24, '2026-01-01T00:00:00Z'),
+('dept-mlt', 'col-cttc', 'FSc. Medical Laboratory Technology', 'MLT', '2 Years Paramedical', 24, '2026-01-01T00:00:00Z'),
+('dept-dsp', 'col-cttc', 'FSc. Dispensing Technology', 'DSP', '2 Years Paramedical', 24, '2026-01-01T00:00:00Z'),
+('dept-ane', 'col-cttc', 'Anesthesia Technician', 'ANE', '2 Years Paramedical', 24, '2026-01-01T00:00:00Z'),
+('dept-pht', 'col-cttc', 'Public Health Technician', 'PHT', '2 Years Paramedical', 24, '2026-01-01T00:00:00Z');
+
 INSERT OR IGNORE INTO users (id, display_name, email, phone, role, course_ids, password_hash, is_phone_verified, created_at) VALUES
 ('u-teacher-1', 'Dr. Maya Chen', 'maya.chen@example.edu', '+15550001001', 'teacher', '["c-001"]', 'scrypt$d61d8f46ce5212d0de626f54910fe3e1$2af1ee96671aaf94237605c177e50fb6bd0fa9ef4c4ca6543e01afc7b716036d450f753153cb14e3d94a2148e3002d4bac56b8df93e82a60cec5c52a6b7ed2a3', 1, '2026-08-15T00:00:00Z'),
 ('u-student-1', 'Alex Rivera', 'alex.rivera@example.edu', '+15550001002', 'student', '["c-001"]', 'scrypt$d61d8f46ce5212d0de626f54910fe3e1$2af1ee96671aaf94237605c177e50fb6bd0fa9ef4c4ca6543e01afc7b716036d450f753153cb14e3d94a2148e3002d4bac56b8df93e82a60cec5c52a6b7ed2a3', 1, '2026-08-15T00:00:00Z'),

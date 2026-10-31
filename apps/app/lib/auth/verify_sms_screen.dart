@@ -75,7 +75,7 @@ class _VerifySmsScreenState extends State<VerifySmsScreen> {
             constraints: const BoxConstraints(maxWidth: 400),
             child: Card(
               elevation: 4,
-              shadowColor: kPrimary.withOpacity(0.3),
+              shadowColor: kPrimary.withValues(alpha: 0.3),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),

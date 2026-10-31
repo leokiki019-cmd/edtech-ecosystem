@@ -50,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
             constraints: const BoxConstraints(maxWidth: 400),
             child: Card(
               elevation: 4,
-              shadowColor: kPrimary.withOpacity(0.3),
+              shadowColor: kPrimary.withValues(alpha: 0.3),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
@@ -80,10 +80,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 32),
                       TextFormField(
                         controller: _phoneController,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'Phone Number',
                           hintText: '+15550001002',
-                          prefixIcon: const Icon(Icons.phone, color: kPrimary),
+                          prefixIcon: Icon(Icons.phone, color: kPrimary),
                         ),
                         keyboardType: TextInputType.phone,
                         validator: (value) {

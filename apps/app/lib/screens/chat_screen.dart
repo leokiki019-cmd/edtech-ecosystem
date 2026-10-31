@@ -5,6 +5,7 @@ import 'package:edtech_app/services/api_service.dart';
 import 'package:edtech_app/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../widgets/bounce_tap.dart';
 import '../widgets/hover_scale.dart';
 import '../widgets/message_bubble.dart';
 
@@ -94,25 +95,24 @@ class _ChatScreenState extends State<ChatScreen> {
     return Column(
       children: [
         if (_loading && _selected == null)
-          const LinearProgressIndicator(minHeight: 4)
+          const LinearProgressIndicator(minHeight: 4, color: kPrimary)
         else if (_error != null && _selected == null)
           Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline, color: kError, size: 48),
+                const Text('😵', style: TextStyle(fontSize: 44)),
                 const SizedBox(height: 12),
                 Text(
                   _error!,
                   style: const TextStyle(color: kTextSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 16),
-                FilledButton.tonal(
+                FilledButton.tonalIcon(
                   onPressed: _loadChannels,
-                  style: FilledButton.styleFrom(
-                    foregroundColor: kPrimary,
-                  ),
-                  child: const Text('Try again'),
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Try again'),
+                  style: FilledButton.styleFrom(foregroundColor: kPrimary),
                 ),
               ],
             ),
@@ -132,22 +132,32 @@ class _ChatScreenState extends State<ChatScreen> {
                       itemBuilder: (context, index) {
                         final channel = _channels[index];
                         final isSelected = _selected?.id == channel.id;
+                        final color = kTabColors[3 % kTabColors.length];
                         return Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: HoverScale(
                             child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
+                              duration: const Duration(milliseconds: 240),
                               curve: Curves.easeOut,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 10,
                               ),
                               decoration: BoxDecoration(
-                                color: isSelected ? kPrimary : kCard,
+                                color: isSelected ? color : kCard,
                                 border: Border.all(
-                                  color: isSelected ? kPrimary : kBorder,
+                                  color: isSelected ? color : kBorder,
                                 ),
                                 borderRadius: BorderRadius.circular(22),
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: color.withValues(alpha: 0.25),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ]
+                                    : null,
                               ),
                               child: Material(
                                 color: Colors.transparent,
@@ -159,7 +169,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                       channel.name,
                                       style: TextStyle(
                                         color: isSelected ? Colors.white : kTextSecondary,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                                         fontSize: 13,
                                       ),
                                     ),
@@ -176,9 +186,21 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: _messages.isEmpty
                       ? const Center(
-                          child: Text(
-                            'No messages yet',
-                            style: TextStyle(color: kTextSecondary),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('💬', style: TextStyle(fontSize: 44)),
+                              SizedBox(height: 12),
+                              Text(
+                                'No messages yet',
+                                style: TextStyle(color: kTextSecondary, fontSize: 14),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Say hello! 👋',
+                                style: TextStyle(color: kTextSecondary, fontSize: 12),
+                              ),
+                            ],
                           ),
                         )
                       : ListView.builder(
@@ -186,10 +208,8 @@ class _ChatScreenState extends State<ChatScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           itemCount: _messages.length,
                           itemBuilder: (context, index) {
-                            final message =
-                                _messages[_messages.length - 1 - index];
-                            final userId =
-                                context.watch<AuthProvider>().user?.id;
+                            final message = _messages[_messages.length - 1 - index];
+                            final userId = context.watch<AuthProvider>().user?.id;
                             return MessageBubble(
                               message: message,
                               isOwn: message.authorId == userId,
@@ -202,38 +222,45 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: kSurface,
             border: Border(top: BorderSide(color: kBorder)),
           ),
           child: Row(
             children: [
               Expanded(
-                child: Tooltip(
-                  message: 'Send message (Enter)',
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: 'Write a message...',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    onSubmitted: (_) => _sendMessage(),
+                child: TextField(
+                  controller: _controller,
+                  decoration: const InputDecoration(
+                    hintText: 'Write a message...',
+                    border: OutlineInputBorder(),
+                    isDense: true,
                   ),
+                  onSubmitted: (_) => _sendMessage(),
                 ),
               ),
               const SizedBox(width: 8),
-              HoverScale(
+              BounceTap(
+                onTap: _sendMessage,
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: livelyGradient(kPrimary, kPrimaryDark),
                     borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: kPrimary.withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  child: IconButton(
-                    onPressed: _sendMessage,
-                    icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                    padding: const EdgeInsets.all(14),
-                    constraints: const BoxConstraints(),
+                  child: const Padding(
+                    padding: EdgeInsets.all(14),
+                    child: Icon(
+                      Icons.send_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
                 ),
               ),

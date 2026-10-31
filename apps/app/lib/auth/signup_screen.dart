@@ -58,7 +58,7 @@ class _SignupScreenState extends State<SignupScreen> {
             constraints: const BoxConstraints(maxWidth: 400),
             child: Card(
               elevation: 4,
-              shadowColor: kPrimary.withOpacity(0.3),
+              shadowColor: kPrimary.withValues(alpha: 0.3),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
@@ -88,9 +88,9 @@ class _SignupScreenState extends State<SignupScreen> {
                       const SizedBox(height: 24),
                       TextFormField(
                         controller: _displayNameController,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'Full Name',
-                          prefixIcon: const Icon(Icons.person, color: kPrimary),
+                          prefixIcon: Icon(Icons.person, color: kPrimary),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -102,9 +102,9 @@ class _SignupScreenState extends State<SignupScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _emailController,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'Email',
-                          prefixIcon: const Icon(Icons.email, color: kPrimary),
+                          prefixIcon: Icon(Icons.email, color: kPrimary),
                         ),
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
@@ -120,10 +120,10 @@ class _SignupScreenState extends State<SignupScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _phoneController,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'Phone Number',
                           hintText: '+15550001002',
-                          prefixIcon: const Icon(Icons.phone, color: kPrimary),
+                          prefixIcon: Icon(Icons.phone, color: kPrimary),
                         ),
                         keyboardType: TextInputType.phone,
                         validator: (value) {
@@ -166,10 +166,10 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
-                        value: _role,
-                        decoration: InputDecoration(
+                        initialValue: _role,
+                        decoration: const InputDecoration(
                           labelText: 'Role',
-                          prefixIcon: const Icon(Icons.person, color: kPrimary),
+                          prefixIcon: Icon(Icons.person, color: kPrimary),
                         ),
                         items: const [
                           DropdownMenuItem(

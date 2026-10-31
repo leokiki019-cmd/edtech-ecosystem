@@ -6,9 +6,14 @@ import 'package:edtech_app/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../widgets/animated_number.dart';
+import '../widgets/bounce_tap.dart';
+import '../widgets/confetti_burst.dart';
 import '../widgets/effort_gauge.dart';
+import '../widgets/floating_shapes.dart';
 import '../widgets/hover_scale.dart';
 import '../widgets/lively_card.dart';
+import '../widgets/skeleton_loader.dart';
+import '../widgets/staggered_reveal.dart';
 import '../widgets/stat_card.dart';
 
 class IntegrityScreen extends StatefulWidget {
@@ -24,6 +29,7 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
   bool _loading = true;
   bool _hasTelemetry = true;
   String? _error;
+  final _confettiKey = GlobalKey<ConfettiBurstState>();
 
   @override
   void initState() {
@@ -66,6 +72,13 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
         _hasTelemetry = report != null;
         _loading = false;
       });
+
+      // Celebrate a strong score.
+      if (report != null && report.effortScore.score >= 75) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _confettiKey.currentState?.celebrate();
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -82,17 +95,16 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
       children: [
         _buildHeader(context),
         const SizedBox(height: 24),
-        if (_loading)
-          const Center(child: CircularProgressIndicator())
-        else if (_error != null)
-          _ErrorState(
-            error: _error!,
-            onRetry: _load,
-          )
-        else if (!_hasTelemetry)
-          _EmptyState(assignmentTitle: _assignment?.title ?? 'this assignment')
-        else
-          _buildReportSection(),
+        ConfettiBurst(
+          key: _confettiKey,
+          child: _loading
+              ? const _ReportSkeleton()
+              : _error != null
+                  ? _ErrorState(error: _error!, onRetry: _load)
+                  : !_hasTelemetry
+                      ? _EmptyState(assignmentTitle: _assignment?.title ?? 'this assignment')
+                      : _buildReportSection(),
+        ),
       ],
     );
   }
@@ -105,7 +117,7 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Integrity',
+                'Integrity 🛡️',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
@@ -126,7 +138,7 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
         Tooltip(
           message: 'Refresh report',
           child: IconButton(
-            icon: const Icon(Icons.refresh, color: kTextSecondary, size: 20),
+            icon: const Icon(Icons.refresh_rounded, color: kTextSecondary, size: 20),
             onPressed: () {
               _load();
               ScaffoldMessenger.of(context).showSnackBar(
@@ -143,104 +155,149 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
   }
 
   Widget _buildReportSection() {
+    return StaggeredReveal(
+      childCount: 1,
+      itemBuilder: (context, _) => Column(
+        children: [
+          LivelyCard(
+            gradient: candyGradient,
+            child: FloatingShapes(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    EffortGauge(score: _report!.effortScore.score),
+                    const SizedBox(height: 16),
+                    AnimatedNumber(
+                      value: _report!.effortScore.score,
+                      style: const TextStyle(
+                        fontSize: 56,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        height: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _report!.flags.isNotEmpty
+                            ? _report!.flags.join(', ').replaceAll('_', ' ')
+                            : 'Organic drafting detected ✨',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: HoverScale(
+                  child: StatCard(
+                    title: 'Keystrokes',
+                    value: _report!.effortScore.keystrokes,
+                    icon: Icons.keyboard_rounded,
+                    color: kPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: HoverScale(
+                  child: StatCard(
+                    title: 'Pastes',
+                    value: _report!.effortScore.pastes,
+                    icon: Icons.content_paste_rounded,
+                    color: kWarning,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: HoverScale(
+                  child: StatCard(
+                    title: 'AI switches',
+                    value: _report!.effortScore.aiTabSwitches,
+                    icon: Icons.tab_rounded,
+                    color: kError,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          LivelyCard(
+            gradient: livelyGradient(kSurface, const Color(0xFFF5F7FA)),
+            child: const Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '🔒 Privacy note',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: kTextPrimary,
+                      fontSize: 16,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Only typing cadence, paste volume and tab activity are recorded. '
+                    'Keystroke content and password fields are never captured.',
+                    style: TextStyle(
+                      color: kTextSecondary,
+                      height: 1.6,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportSkeleton extends StatelessWidget {
+  const _ReportSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
-        LivelyCard(
-          gradient: livelyGradient(kPrimary, kPrimaryDark),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              children: [
-                EffortGauge(score: _report!.effortScore.score),
-                const SizedBox(height: 16),
-                AnimatedNumber(
-                  value: _report!.effortScore.score,
-                  style: const TextStyle(
-                    fontSize: 60,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _report!.flags.isNotEmpty
-                      ? _report!.flags.join(', ').replaceAll('_', ' ')
-                      : 'Organic drafting detected',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
+        Container(
+          height: 320,
+          decoration: BoxDecoration(
+            gradient: candyGradient,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: const Center(
+            child: CircularProgressIndicator(color: Colors.white),
           ),
         ),
         const SizedBox(height: 24),
-        Row(
+        const Row(
           children: [
-            Expanded(
-              child: HoverScale(
-                child: StatCard(
-                  title: 'Keystrokes',
-                  value: _report!.effortScore.keystrokes,
-                  icon: Icons.keyboard,
-                  color: kPrimary,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: HoverScale(
-                child: StatCard(
-                  title: 'Pastes',
-                  value: _report!.effortScore.pastes,
-                  icon: Icons.content_paste,
-                  color: kWarning,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: HoverScale(
-                child: StatCard(
-                  title: 'AI switches',
-                  value: _report!.effortScore.aiTabSwitches,
-                  icon: Icons.tab,
-                  color: kError,
-                ),
-              ),
-            ),
+            Expanded(child: SkeletonBox(height: 110, borderRadius: BorderRadius.all(Radius.circular(18)))),
+            SizedBox(width: 12),
+            Expanded(child: SkeletonBox(height: 110, borderRadius: BorderRadius.all(Radius.circular(18)))),
+            SizedBox(width: 12),
+            Expanded(child: SkeletonBox(height: 110, borderRadius: BorderRadius.all(Radius.circular(18)))),
           ],
-        ),
-        const SizedBox(height: 24),
-        LivelyCard(
-          gradient: livelyGradient(kSurface, const Color(0xFFF5F7FA)),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  'Privacy note',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: kTextPrimary,
-                    fontSize: 16,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Only typing cadence, paste volume and tab activity are recorded. '
-                  'Keystroke content and password fields are never captured.',
-                  style: TextStyle(
-                    color: kTextSecondary,
-                    height: 1.6,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
       ],
     );
@@ -260,11 +317,11 @@ class _EmptyState extends StatelessWidget {
         padding: const EdgeInsets.all(32),
         child: Column(
           children: [
-            const Icon(Icons.edit_note, color: kPrimary, size: 56),
+            const Text('✍️', style: TextStyle(fontSize: 52)),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'No writing sessions yet',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: kTextPrimary,
@@ -281,6 +338,24 @@ class _EmptyState extends StatelessWidget {
                 fontSize: 13,
               ),
             ),
+            const SizedBox(height: 20),
+            BounceTap(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  color: tintOf(kPrimary, 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Text(
+                  'Learn how it works →',
+                  style: TextStyle(
+                    color: kPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -292,10 +367,7 @@ class _ErrorState extends StatelessWidget {
   final String error;
   final VoidCallback onRetry;
 
-  const _ErrorState({
-    required this.error,
-    required this.onRetry,
-  });
+  const _ErrorState({required this.error, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -303,7 +375,7 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, color: kError, size: 48),
+          const Text('😵', style: TextStyle(fontSize: 44)),
           const SizedBox(height: 12),
           Text(
             error,
@@ -311,15 +383,15 @@ class _ErrorState extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
-          FilledButton.tonal(
+          FilledButton.tonalIcon(
             onPressed: onRetry,
-            style: FilledButton.styleFrom(
-              foregroundColor: kPrimary,
-            ),
-            child: const Text('Try again'),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Try again'),
+            style: FilledButton.styleFrom(foregroundColor: kPrimary),
           ),
         ],
       ),
     );
   }
 }
+

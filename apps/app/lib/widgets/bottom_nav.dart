@@ -1,6 +1,8 @@
 import 'package:edtech_app/theme.dart';
 import 'package:flutter/material.dart';
 
+/// A floating, rounded pill navigation bar. The active tab gets a candy
+/// gradient pill that springs in behind the icon.
 class BottomNav extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onTap;
@@ -8,78 +10,121 @@ class BottomNav extends StatelessWidget {
   const BottomNav({super.key, required this.selectedIndex, required this.onTap});
 
   static const _items = [
-    {'icon': Icons.dashboard, 'label': 'Dashboard', 'color': kPrimary},
-    {'icon': Icons.school, 'label': 'Courses', 'color': kAccentDark},
-    {'icon': Icons.calendar_today, 'label': 'Calendar', 'color': kPink},
-    {'icon': Icons.chat_bubble_outline, 'label': 'Chat', 'color': kOrange},
-    {'icon': Icons.verified, 'label': 'Integrity', 'color': kSuccess},
+    {'icon': Icons.dashboard_rounded, 'label': 'Home'},
+    {'icon': Icons.school_rounded, 'label': 'Courses'},
+    {'icon': Icons.calendar_month_rounded, 'label': 'Calendar'},
+    {'icon': Icons.chat_bubble_rounded, 'label': 'Chat'},
+    {'icon': Icons.verified_rounded, 'label': 'Integrity'},
   ];
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 80,
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+      height: 66,
       decoration: BoxDecoration(
         color: kSurface,
-        border: Border(top: BorderSide(color: kBorder)),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: kBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
+            color: kPrimary.withValues(alpha: 0.10),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Row(
-        children: List.generate(
-          _items.length,
-          (index) {
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: List.generate(_items.length, (index) {
             final item = _items[index];
+            final color = kTabColors[index % kTabColors.length];
             final isSelected = selectedIndex == index;
             return Expanded(
-              child: InkWell(
+              child: _NavTab(
+                icon: item['icon'] as IconData,
+                label: item['label'] as String,
+                color: color,
+                isSelected: isSelected,
                 onTap: () => onTap(index),
-                hoverColor: Colors.transparent,
-                splashColor: Colors.transparent,
-                highlightColor: Colors.transparent,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOut,
-                  color: isSelected
-                      ? (item['color'] as Color).withOpacity(0.10)
-                      : Colors.transparent,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(height: 8),
-                      AnimatedScale(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeOut,
-                        scale: isSelected ? 1.12 : 1.0,
-                        child: Icon(
-                          item['icon'] as IconData,
-                          color: isSelected ? (item['color'] as Color) : kTextSecondary,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 200),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: isSelected ? (item['color'] as Color) : kTextSecondary,
-                        ),
-                        child: Text(item['label'] as String),
-                      ),
-                      const SizedBox(height: 6),
-                    ],
-                  ),
-                ),
               ),
             );
-          },
+          }),
         ),
+      ),
+    );
+  }
+}
+
+class _NavTab extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _NavTab({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 6),
+          // Gradient pill that springs in behind the active icon.
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 380),
+            curve: Curves.easeOutBack,
+            width: isSelected ? 56 : 0,
+            height: 32,
+            decoration: BoxDecoration(
+              gradient: livelyGradient(color, shadeOf(color, 0.2)),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.4),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Center(
+              child: AnimatedScale(
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.elasticOut,
+                scale: isSelected ? 1.15 : 1.0,
+                child: Icon(
+                  icon,
+                  size: 21,
+                  color: isSelected ? Colors.white : kTextSecondary,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 3),
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 200),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+              color: isSelected ? color : kTextSecondary,
+            ),
+            child: Text(label),
+          ),
+          const SizedBox(height: 5),
+        ],
       ),
     );
   }

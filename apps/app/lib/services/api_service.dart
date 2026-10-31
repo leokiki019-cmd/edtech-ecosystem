@@ -4,6 +4,7 @@ import 'package:edtech_app/config.dart';
 import 'package:edtech_app/models/assignment.dart';
 import 'package:edtech_app/models/attachment.dart';
 import 'package:edtech_app/models/calendar_event.dart';
+import 'package:edtech_app/models/college.dart';
 import 'package:edtech_app/models/channel.dart';
 import 'package:edtech_app/models/chat_message.dart';
 import 'package:edtech_app/models/course.dart';
@@ -17,6 +18,22 @@ class ApiService {
   factory ApiService() => instance;
 
   final http.Client _client = http.Client();
+
+  /// Live college profile (name + departments) from the API.
+  /// Falls back to the local CTTC demo copy when unreachable.
+  Future<College> getCollege() async {
+    try {
+      final response = await _client
+          .get(Uri.parse('${AppConfig.apiBaseUrl}/api/v1/college'))
+          .timeout(const Duration(seconds: 8));
+      _throwOnError(response);
+      final data = jsonDecode(response.body)['data'];
+      if (data == null) return College.demo;
+      return College.fromJson(data as Map<String, dynamic>);
+    } catch (_) {
+      return College.demo;
+    }
+  }
 
   Future<List<Course>> getCourses() async {
     try {

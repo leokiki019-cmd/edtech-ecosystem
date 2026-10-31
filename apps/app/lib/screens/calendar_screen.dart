@@ -3,6 +3,8 @@ import 'package:edtech_app/services/api_service.dart';
 import 'package:edtech_app/theme.dart';
 import 'package:flutter/material.dart';
 import '../widgets/deadline_card.dart';
+import '../widgets/skeleton_loader.dart';
+import '../widgets/staggered_reveal.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -14,7 +16,6 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _fade;
-  late final AnimationController _pulse;
   List<CalendarEvent> _events = [];
   bool _loading = true;
   String? _error;
@@ -27,11 +28,14 @@ class _CalendarScreenState extends State<CalendarScreen>
       duration: const Duration(milliseconds: 700),
       value: 1.0,
     );
-    _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500));
     _load();
   }
 
   Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final events = await ApiService.instance.getCalendar(null);
       if (!mounted) return;
@@ -39,10 +43,8 @@ class _CalendarScreenState extends State<CalendarScreen>
         _events = List<CalendarEvent>.from(events)
           ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
         _loading = false;
-        _error = null;
       });
-      _fade.forward();
-      _pulse.repeat(reverse: true);
+      _fade.forward(from: 0);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -55,7 +57,6 @@ class _CalendarScreenState extends State<CalendarScreen>
   @override
   void dispose() {
     _fade.dispose();
-    _pulse.dispose();
     super.dispose();
   }
 
@@ -63,31 +64,56 @@ class _CalendarScreenState extends State<CalendarScreen>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: CurvedAnimation(parent: _fade, curve: Curves.easeOut),
-      child: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          _buildHeader(),
-          const SizedBox(height: 24),
-          if (_loading)
-            const Center(child: CircularProgressIndicator())
-          else if (_error != null)
-            _ErrorState(
-              error: _error!,
-              onRetry: _load,
-            )
-          else if (_events.isEmpty)
-            const Center(
-              child: Text(
-                'No upcoming events',
-                style: TextStyle(color: kTextSecondary, fontSize: 16),
-              ),
-            )
-          else
-            ..._events.map((event) => Padding(
+      child: RefreshIndicator(
+        onRefresh: _load,
+        color: kPrimary,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(24),
+          children: [
+            _buildHeader(),
+            const SizedBox(height: 24),
+            if (_loading)
+              const Column(
+                children: [SkeletonCard(), SkeletonCard(), SkeletonCard()],
+              )
+            else if (_error != null)
+              _ErrorState(error: _error!, onRetry: _load)
+            else if (_events.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: kCard,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: kBorder),
+                ),
+                child: const Column(
+                  children: [
+                    Text('🗓️', style: TextStyle(fontSize: 48)),
+                    SizedBox(height: 12),
+                    Text(
+                      'Nothing scheduled',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kTextPrimary),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Your calendar is wide open!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: kTextSecondary, fontSize: 13),
+                    ),
+                  ],
+                ),
+              )
+            else
+              StaggeredReveal(
+                childCount: _events.length,
+                itemBuilder: (context, index) => Padding(
                   padding: const EdgeInsets.only(bottom: 14),
-                  child: DeadlineCard(event: event),
-                )),
-        ],
+                  child: DeadlineCard(event: _events[index]),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -97,7 +123,7 @@ class _CalendarScreenState extends State<CalendarScreen>
       children: [
         const Expanded(
           child: Text(
-            'Calendar',
+            'Calendar 📅',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
@@ -108,7 +134,7 @@ class _CalendarScreenState extends State<CalendarScreen>
         Tooltip(
           message: 'Refresh calendar',
           child: IconButton(
-            icon: const Icon(Icons.refresh, color: kTextSecondary, size: 20),
+            icon: const Icon(Icons.refresh_rounded, color: kTextSecondary, size: 20),
             onPressed: () {
               _load();
               ScaffoldMessenger.of(context).showSnackBar(
@@ -129,10 +155,7 @@ class _ErrorState extends StatelessWidget {
   final String error;
   final VoidCallback onRetry;
 
-  const _ErrorState({
-    required this.error,
-    required this.onRetry,
-  });
+  const _ErrorState({required this.error, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +163,7 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, color: kError, size: 48),
+          const Text('😵', style: TextStyle(fontSize: 44)),
           const SizedBox(height: 12),
           Text(
             error,
@@ -148,12 +171,11 @@ class _ErrorState extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
-          FilledButton.tonal(
+          FilledButton.tonalIcon(
             onPressed: onRetry,
-            style: FilledButton.styleFrom(
-              foregroundColor: kPrimary,
-            ),
-            child: const Text('Try again'),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Try again'),
+            style: FilledButton.styleFrom(foregroundColor: kPrimary),
           ),
         ],
       ),

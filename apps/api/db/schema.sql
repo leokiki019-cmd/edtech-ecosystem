@@ -26,6 +26,26 @@ CREATE TABLE IF NOT EXISTS courses (
   FOREIGN KEY (teacher_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS colleges (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  short_name TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+-- duration_months fits every panel on the flyer: 36 (DAE), 24 (certificates
+-- and paramedical) and 6 (short courses). category mirrors the flyer panels.
+CREATE TABLE IF NOT EXISTS departments (
+  id TEXT PRIMARY KEY,
+  college_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  code TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT '3 Years',
+  duration_months INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (college_id) REFERENCES colleges(id)
+);
+
 CREATE TABLE IF NOT EXISTS assignments (
   id TEXT PRIMARY KEY,
   course_id TEXT NOT NULL,
@@ -136,6 +156,7 @@ CREATE TABLE IF NOT EXISTS sms_verification_codes (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sms_codes_phone ON sms_verification_codes(phone);
+CREATE INDEX IF NOT EXISTS idx_departments_college ON departments(college_id);
 CREATE INDEX IF NOT EXISTS idx_assignments_course ON assignments(course_id);
 CREATE INDEX IF NOT EXISTS idx_submissions_assignment ON submissions(assignment_id);
 CREATE INDEX IF NOT EXISTS idx_submissions_student ON submissions(student_id);
