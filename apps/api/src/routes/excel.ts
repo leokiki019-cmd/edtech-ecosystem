@@ -1,7 +1,9 @@
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { getStudentsByCourse, createUser, getUsers } from '../store/db.js';
 import { authenticate } from '../middleware/auth.js';
 import type { Role } from "../store/db";
+
+type AuthRequest = FastifyRequest & { user?: { id: string; role?: string } };
 
 const excelRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /api/v1/excel/import/students - import students from Excel
@@ -10,7 +12,8 @@ const excelRoutes: FastifyPluginAsync = async (fastify) => {
     '/excel/import/students',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const caller = request.user as { role?: Role } | undefined;
+      const req = request as AuthRequest;
+      const caller = req.user;
       if (caller?.role !== 'admin') {
         return reply.code(403).send({ error: { code: 'FORBIDDEN', message: 'Admin only' } });
       }
@@ -70,7 +73,8 @@ const excelRoutes: FastifyPluginAsync = async (fastify) => {
     '/excel/export/students',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const caller = request.user as { role?: Role } | undefined;
+      const req = request as AuthRequest;
+      const caller = req.user;
       if (caller?.role !== 'admin' && caller?.role !== 'teacher') {
         return reply.code(403).send({ error: { code: 'FORBIDDEN', message: 'Admin or teacher only' } });
       }
