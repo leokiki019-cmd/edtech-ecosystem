@@ -346,6 +346,10 @@ class AppDrawer extends StatelessWidget {
     _DrawerItemData(Icons.calendar_month_rounded, 'Calendar', 'Deadlines & events'),
     _DrawerItemData(Icons.chat_bubble_rounded, 'Chat', 'Classroom discussion'),
     _DrawerItemData(Icons.verified_rounded, 'Integrity', 'Effort & authenticity score'),
+    _DrawerItemData(Icons.people_rounded, 'Students', 'Manage student roster'),
+    _DrawerItemData(Icons.business_rounded, 'Departments', 'Drag-drop enrollment'),
+    _DrawerItemData(Icons.check_circle_rounded, 'Attendance', 'Mark present / absent'),
+    _DrawerItemData(Icons.note_rounded, 'Notes', 'Teacher notes by book & code'),
   ];
 
   @override

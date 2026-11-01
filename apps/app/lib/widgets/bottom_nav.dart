@@ -15,6 +15,10 @@ class BottomNav extends StatelessWidget {
     {'icon': Icons.calendar_month_rounded, 'label': 'Calendar'},
     {'icon': Icons.chat_bubble_rounded, 'label': 'Chat'},
     {'icon': Icons.verified_rounded, 'label': 'Integrity'},
+    {'icon': Icons.people_rounded, 'label': 'Students'},
+    {'icon': Icons.business_rounded, 'label': 'Departments'},
+    {'icon': Icons.check_circle_rounded, 'label': 'Attendance'},
+    {'icon': Icons.note_rounded, 'label': 'Notes'},
   ];
 
   @override
