@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "npm install --ignore-scripts && npx prebuild-install --tag=release --runtime=napi 2>/dev/null || true",
-  "installCommand": "npm install --ignore-scripts",
+  "buildCommand": "",
+  "installCommand": "npm install",
   "functions": {
     "api/index.ts": {
       "maxDuration": 30,
