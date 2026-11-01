@@ -1,61 +1,74 @@
-import { Database as SqlJsDatabase } from 'sql.js';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { Database as SqlJsDatabase, initSqlJs } from 'sql.js';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import * as fs from 'node:fs';
 
 // sql.js is pure JavaScript + WebAssembly - works on Vercel serverless
 // without native compilation (unlike better-sqlite3).
-let dbPromise: Promise<SqlJsDatabase> | null = null;
+let dbInstance: SqlJsDatabase | null = null;
 
-function getDbPath(): string {
-  // Serverless hosts (Vercel) have a read-only filesystem with /tmp as the
-  // only writable path; DATA_DIR overrides either default.
+async function initDatabase(): Promise<SqlJsDatabase> {
+  const SQL = await initSqlJs({
+    locateFile: (file: string) => {
+      if (file === 'sql-wasm.wasm') {
+        return new URL('sql-wasm.wasm', import.meta.url).toString();
+      }
+      return file;
+    },
+  });
+
+  // Get database path
   const defaultDataDir = process.env.VERCEL
     ? '/tmp/edtech-data'
-    : join(process.cwd(), "data");
+    : process.cwd() + '/data';
   const dataDir = process.env.DATA_DIR ?? defaultDataDir;
-  if (!existsSync(dataDir)) {
-    mkdirSync(dataDir, { recursive: true });
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
   }
-  return join(dataDir, "edtech.sqlite");
-}
-
-async function initDbInstance(): Promise<SqlJsDatabase> {
-  const Db = await SqlJsDatabase();
-  const dbPath = getDbPath();
+  const dbPath = dataDir + '/edtech.sqlite';
 
   // Try to load existing database from file
   let buffer: Uint8Array | null = null;
   try {
-    if (existsSync(dbPath)) {
-      buffer = readFileSync(dbPath);
+    if (fs.existsSync(dbPath)) {
+      buffer = fs.readFileSync(dbPath);
     }
   } catch {
     // File doesn't exist yet, start fresh
   }
 
-  const db = new Db(buffer ? { file: buffer } : {});
+  const db = new SQL.Database(buffer ? { file: buffer } : {});
 
   // Enable foreign keys
-  db.run("PRAGMA foreign_keys = ON");
+  db.run('PRAGMA foreign_keys = ON');
 
   return db;
 }
 
-async function getDb(): Promise<SqlJsDatabase> {
-  if (!dbPromise) {
-    dbPromise = initDbInstance();
+// Initialize database at module load time
+const dbPromise = initDatabase();
+dbPromise.then((db) => {
+  dbInstance = db;
+});
+
+function getDb(): SqlJsDatabase {
+  if (!dbInstance) {
+    throw new Error('Database not initialized');
   }
-  return dbPromise;
+  return dbInstance;
 }
 
 function saveDbToFile(db: SqlJsDatabase): void {
-  const dbPath = getDbPath();
+  const defaultDataDir = process.env.VERCEL
+    ? '/tmp/edtech-data'
+    : process.cwd() + '/data';
+  const dataDir = process.env.DATA_DIR ?? defaultDataDir;
+  const dbPath = dataDir + '/edtech.sqlite';
   try {
     const data = db.export();
-    writeFileSync(dbPath, Buffer.from(data));
+    fs.writeFileSync(dbPath, Buffer.from(data as Uint8Array));
   } catch {
-    // Best-effort persistence; on serverless /tmp may not persist
+    // Best-effort persistence
   }
 }
 
@@ -76,107 +89,11 @@ function normDate(value: string | null): string | null {
   return `${value.replace(" ", "T")}Z`;
 }
 
-function toUser(row: any): User {
-  return {
-    id: row.id,
-    displayName: row.display_name,
-    email: row.email,
-    phone: row.phone,
-    role: row.role as Role,
-    courseIds: parseJson(row.course_ids, []),
-    isPhoneVerified: Boolean(row.is_phone_verified),
-    createdAt: normDate(row.created_at) ?? row.created_at,
-  };
-}
+// ============================================
+// Types
+// ============================================
 
-function toCourse(row: any): Course {
-  return {
-    id: row.id,
-    title: row.title,
-    code: row.code,
-    teacherId: row.teacher_id,
-    studentIds: parseJson(row.student_ids, []),
-    term: row.term,
-    createdAt: normDate(row.created_at) ?? row.created_at,
-  };
-}
-
-function toCollege(row: any): College {
-  return {
-    id: row.id,
-    name: row.name,
-    shortName: row.short_name,
-    createdAt: normDate(row.created_at) ?? row.created_at,
-  };
-}
-
-function toDepartment(row: any): Department {
-  return {
-    id: row.id,
-    collegeId: row.college_id,
-    name: row.name,
-    code: row.code,
-    category: row.category as Department['category'],
-    durationMonths: row.duration_months,
-    createdAt: normDate(row.created_at) ?? row.created_at,
-  };
-}
-
-function toAssignment(row: any): Assignment {
-  return {
-    id: row.id,
-    courseId: row.course_id,
-    title: row.title,
-    brief: row.brief,
-    dueAt: normDate(row.due_at) ?? row.due_at,
-    status: row.status,
-    createdAt: normDate(row.created_at) ?? row.created_at,
-  };
-}
-
-function toSubmission(row: any): Submission {
-  return {
-    id: row.id,
-    assignmentId: row.assignment_id,
-    studentId: row.student_id,
-    status: row.status,
-    submittedAt: normDate(row.submitted_at),
-    attachments: parseJson(row.attachments, []),
-    grade: row.grade,
-    effortScore: row.effort_score,
-  };
-}
-
-function toCalendarEvent(row: any): CalendarEvent {
-  return {
-    id: row.id,
-    courseId: row.course_id,
-    title: row.title,
-    kind: row.kind,
-    startsAt: normDate(row.starts_at) ?? row.starts_at,
-    endsAt: normDate(row.ends_at),
-  };
-}
-
-function toChannel(row: any): ChatChannel {
-  return {
-    id: row.id,
-    courseId: row.course_id,
-    name: row.name,
-    kind: row.kind,
-    memberIds: parseJson(row.member_ids, []),
-  };
-}
-
-function toMessage(row: any): ChatMessage {
-  return {
-    id: row.id,
-    channelId: row.channel_id,
-    authorId: row.author_id,
-    body: row.body,
-    sentAt: normDate(row.sent_at) ?? row.sent_at,
-  };
-}
+export type Role = "student" | "teacher" | "admin";
 
 export interface User {
   id: string;
@@ -189,8 +106,6 @@ export interface User {
   isPhoneVerified?: boolean;
   createdAt: string;
 }
-
-export type Role = "student" | "teacher" | "admin";
 
 export interface College {
   id: string;
@@ -327,12 +242,52 @@ export interface ApiResponse<T> {
   data: T;
 }
 
-/* ============================================
-   INITIALIZATION
-   ============================================ */
+export interface AttendanceRecord {
+  id: string;
+  courseId: string;
+  studentId: string;
+  date: string;
+  status: 'present' | 'absent' | 'late' | 'excused';
+  markedBy: string;
+  notes: string;
+  createdAt: string;
+}
+
+export interface TeacherNote {
+  id: string;
+  courseId: string;
+  bookName: string;
+  courseCode: string;
+  title: string;
+  content: string;
+  authorId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudentDepartment {
+  id: string;
+  studentId: string;
+  departmentId: string;
+  enrolledAt: string;
+  enrolledBy: string;
+}
+
+export interface SmsCode {
+  id: string;
+  phone: string;
+  code: string;
+  expiresAt: string;
+  createdAt?: string;
+}
+
+// ============================================
+// INITIALIZATION
+// ============================================
 
 export async function initDb(): Promise<void> {
-  const db = await getDb();
+  await dbPromise;
+  const db = getDb();
   runMigrations(db);
   seedIfEmpty(db);
 }
@@ -381,13 +336,13 @@ function runMigrations(db: SqlJsDatabase): void {
 
 function readSql(name: string): string {
   const candidates = [
-    join(process.cwd(), "db", name),
-    join(process.cwd(), "apps", "api", "db", name),
-    join(process.cwd(), "apps/api/db", name),
+    process.cwd() + '/db/' + name,
+    process.cwd() + '/apps/api/db/' + name,
+    process.cwd() + '/apps/api/db/' + name,
   ];
   for (const candidate of candidates) {
-    if (existsSync(candidate)) {
-      return readFileSync(candidate, "utf-8");
+    if (fs.existsSync(candidate)) {
+      return fs.readFileSync(candidate, 'utf-8');
     }
   }
   throw new Error(`Cannot find db/${name}. Looked in: ${candidates.join(", ")}`);
@@ -396,27 +351,39 @@ function readSql(name: string): string {
 function seedIfEmpty(db: SqlJsDatabase): void {
   migrateDepartmentsTable(db);
 
-  const schema = readSql("schema.sql");
+  const schema = readSql('schema.sql');
   db.exec(schema);
 
   const count = db.prepare("SELECT COUNT(*) AS c FROM users").get() as { c: number };
   const deptCount = db.prepare("SELECT COUNT(*) AS c FROM departments").get() as { c: number };
 
   if (count.c === 0 || deptCount.c === 0) {
-    db.exec(readSql("seed.sql"));
+    db.exec(readSql('seed.sql'));
   }
 
   runMigrations(db);
   saveDbToFile(db);
 }
 
-/* ============================================
-   USERS
-   ============================================ */
+// ============================================
+// USERS
+// ============================================
+
+function toUser(row: any): User {
+  return {
+    id: row.id,
+    displayName: row.display_name,
+    email: row.email,
+    phone: row.phone,
+    role: row.role as Role,
+    courseIds: parseJson(row.course_ids, []),
+    isPhoneVerified: Boolean(row.is_phone_verified),
+    createdAt: normDate(row.created_at) ?? row.created_at,
+  };
+}
 
 export function getUsers(): User[] {
-  const db = getDb(); // sync after init
-  // Note: This is called after initDb() completes in buildApp()
+  const db = getDb();
   return (db.prepare('SELECT * FROM users').all() as unknown as any[]).map(toUser);
 }
 
@@ -514,9 +481,21 @@ export function updateUser(userId: string, updates: Partial<{
   saveDbToFile(db);
 }
 
-/* ============================================
-   COURSES
-   ============================================ */
+// ============================================
+// COURSES
+// ============================================
+
+function toCourse(row: any): Course {
+  return {
+    id: row.id,
+    title: row.title,
+    code: row.code,
+    teacherId: row.teacher_id,
+    studentIds: parseJson(row.student_ids, []),
+    term: row.term,
+    createdAt: normDate(row.created_at) ?? row.created_at,
+  };
+}
 
 export function getCourses(): Course[] {
   const db = getDb();
@@ -534,7 +513,15 @@ export function getAssignmentsByCourse(courseId: string): Assignment[] {
   const db = getDb();
   return (db
     .prepare('SELECT * FROM assignments WHERE course_id = ? ORDER BY due_at')
-    .all(courseId) as unknown as any[]).map(toAssignment);
+    .all(courseId) as unknown as any[]).map((row: any) => ({
+      id: row.id,
+      courseId: row.course_id,
+      title: row.title,
+      brief: row.brief,
+      dueAt: normDate(row.due_at) ?? row.due_at,
+      status: row.status,
+      createdAt: normDate(row.created_at) ?? row.created_at,
+    }));
 }
 
 export function addStudentToCourse(courseId: string, studentId: string): void {
@@ -558,9 +545,18 @@ export function removeStudentFromCourse(courseId: string, studentId: string): vo
   saveDbToFile(db);
 }
 
-/* ============================================
-   COLLEGE
-   ============================================ */
+// ============================================
+// COLLEGE
+// ============================================
+
+function toCollege(row: any): College {
+  return {
+    id: row.id,
+    name: row.name,
+    shortName: row.short_name,
+    createdAt: normDate(row.created_at) ?? row.created_at,
+  };
+}
 
 export function getColleges(): College[] {
   const db = getDb();
@@ -578,12 +574,32 @@ export function getDepartments(collegeId: string): Department[] {
   const db = getDb();
   return (db
     .prepare('SELECT * FROM departments WHERE college_id = ? ORDER BY name')
-    .all(collegeId) as unknown as any[]).map(toDepartment);
+    .all(collegeId) as unknown as any[]).map((row: any) => ({
+      id: row.id,
+      collegeId: row.college_id,
+      name: row.name,
+      code: row.code,
+      category: row.category,
+      durationMonths: row.duration_months,
+      createdAt: normDate(row.created_at) ?? row.created_at,
+    }));
 }
 
-/* ============================================
-   ASSIGNMENTS
-   ============================================ */
+// ============================================
+// ASSIGNMENTS
+// ============================================
+
+function toAssignment(row: any): Assignment {
+  return {
+    id: row.id,
+    courseId: row.course_id,
+    title: row.title,
+    brief: row.brief,
+    dueAt: normDate(row.due_at) ?? row.due_at,
+    status: row.status,
+    createdAt: normDate(row.created_at) ?? row.created_at,
+  };
+}
 
 export function getAssignment(assignmentId: string): Assignment | undefined {
   const db = getDb();
@@ -592,9 +608,22 @@ export function getAssignment(assignmentId: string): Assignment | undefined {
   return toAssignment(row);
 }
 
-/* ============================================
-   SUBMISSIONS
-   ============================================ */
+// ============================================
+// SUBMISSIONS
+// ============================================
+
+function toSubmission(row: any): Submission {
+  return {
+    id: row.id,
+    assignmentId: row.assignment_id,
+    studentId: row.student_id,
+    status: row.status,
+    submittedAt: normDate(row.submitted_at),
+    attachments: parseJson(row.attachments, []),
+    grade: row.grade,
+    effortScore: row.effort_score,
+  };
+}
 
 export function getSubmissionsByAssignment(assignmentId: string): Submission[] {
   const db = getDb();
@@ -681,46 +710,78 @@ export function updateSubmission(
   saveDbToFile(db);
 }
 
-/* ============================================
-   CALENDAR
-   ============================================ */
+// ============================================
+// CALENDAR
+// ============================================
 
 export function getCalendarEvents(courseIds: Set<string>): CalendarEvent[] {
   const db = getDb();
   if (courseIds.size === 0) {
     return (db
       .prepare('SELECT * FROM calendar_events WHERE course_id IS NULL')
-      .all() as unknown as any[]).map(toCalendarEvent);
+      .all() as unknown as any[]).map((row: any) => ({
+        id: row.id,
+        courseId: row.course_id,
+        title: row.title,
+        kind: row.kind,
+        startsAt: normDate(row.starts_at) ?? row.starts_at,
+        endsAt: normDate(row.ends_at),
+      }));
   }
   const conditions = [...courseIds].map(() => 'course_id = ?').join(' OR ');
   return (db
     .prepare(`SELECT * FROM calendar_events WHERE course_id IS NULL OR ${conditions}`)
-    .all(...[...courseIds]) as unknown as any[]).map(toCalendarEvent);
+    .all(...[...courseIds]) as unknown as any[]).map((row: any) => ({
+      id: row.id,
+      courseId: row.course_id,
+      title: row.title,
+      kind: row.kind,
+      startsAt: normDate(row.starts_at) ?? row.starts_at,
+      endsAt: normDate(row.ends_at),
+    }));
 }
 
-/* ============================================
-   CHAT CHANNELS
-   ============================================ */
+// ============================================
+// CHAT CHANNELS
+// ============================================
 
 export function getChannelsByCourse(courseId: string): ChatChannel[] {
   const db = getDb();
   return (db
     .prepare('SELECT * FROM chat_channels WHERE course_id = ?')
-    .all(courseId) as unknown as any[]).map(toChannel);
+    .all(courseId) as unknown as any[]).map((row: any) => ({
+      id: row.id,
+      courseId: row.course_id,
+      name: row.name,
+      kind: row.kind,
+      memberIds: parseJson(row.member_ids, []),
+    }));
 }
 
 export function getChannel(channelId: string): ChatChannel | undefined {
   const db = getDb();
   const row = db.prepare('SELECT * FROM chat_channels WHERE id = ?').get(channelId) as any;
   if (!row) return undefined;
-  return toChannel(row);
+  return {
+    id: row.id,
+    courseId: row.course_id,
+    name: row.name,
+    kind: row.kind,
+    memberIds: parseJson(row.member_ids, []),
+  };
 }
 
 export function getMessages(channelId: string): ChatMessage[] {
   const db = getDb();
   return (db
     .prepare('SELECT * FROM chat_messages WHERE channel_id = ? ORDER BY sent_at')
-    .all(channelId) as unknown as any[]).map(toMessage);
+    .all(channelId) as unknown as any[]).map((row: any) => ({
+      id: row.id,
+      channelId: row.channel_id,
+      authorId: row.author_id,
+      body: row.body,
+      sentAt: normDate(row.sent_at) ?? row.sent_at,
+    }));
 }
 
 export function createMessage(input: {
@@ -738,9 +799,9 @@ export function createMessage(input: {
   return { id, channelId: input.channelId, authorId: input.authorId, body: input.body, sentAt: now };
 }
 
-/* ============================================
-   TELEMETRY
-   ============================================ */
+// ============================================
+// TELEMETRY
+// ============================================
 
 export function getTelemetryBatches(): SignedTelemetryBatch[] {
   const db = getDb();
@@ -778,9 +839,9 @@ export function createTelemetryBatch(batch: SignedTelemetryBatch): void {
   saveDbToFile(db);
 }
 
-/* ============================================
-   EFFORT & INTEGRITY
-   ============================================ */
+// ============================================
+// EFFORT & INTEGRITY
+// ============================================
 
 export function getEffortScore(studentId: string, assignmentId: string): EffortScore | undefined {
   const db = getDb();
@@ -846,17 +907,9 @@ export function setIntegrityFlags(studentId: string, assignmentId: string, flags
   saveDbToFile(db);
 }
 
-/* ============================================
-   SMS VERIFICATION
-   ============================================ */
-
-export interface SmsCode {
-  id: string;
-  phone: string;
-  code: string;
-  expiresAt: string;
-  createdAt?: string;
-}
+// ============================================
+// SMS VERIFICATION
+// ============================================
 
 export function createSmsCode(input: {
   id: string;
@@ -898,20 +951,9 @@ export function markPhoneVerified(phone: string): void {
   saveDbToFile(db);
 }
 
-/* ============================================
-   ATTENDANCE RECORDS
-   ============================================ */
-
-export interface AttendanceRecord {
-  id: string;
-  courseId: string;
-  studentId: string;
-  date: string;
-  status: 'present' | 'absent' | 'late' | 'excused';
-  markedBy: string;
-  notes: string;
-  createdAt: string;
-}
+// ============================================
+// ATTENDANCE RECORDS
+// ============================================
 
 function toAttendanceRecord(row: any): AttendanceRecord {
   return {
@@ -989,21 +1031,9 @@ export function upsertAttendanceRecord(input: {
   };
 }
 
-/* ============================================
-   TEACHER NOTES
-   ============================================ */
-
-export interface TeacherNote {
-  id: string;
-  courseId: string;
-  bookName: string;
-  courseCode: string;
-  title: string;
-  content: string;
-  authorId: string;
-  createdAt: string;
-  updatedAt: string;
-}
+// ============================================
+// TEACHER NOTES
+// ============================================
 
 function toTeacherNote(row: any): TeacherNote {
   return {
@@ -1088,17 +1118,9 @@ export function deleteTeacherNote(id: string): void {
   saveDbToFile(db);
 }
 
-/* ============================================
-   STUDENT DEPARTMENT ENROLLMENT
-   ============================================ */
-
-export interface StudentDepartment {
-  id: string;
-  studentId: string;
-  departmentId: string;
-  enrolledAt: string;
-  enrolledBy: string;
-}
+// ============================================
+// STUDENT DEPARTMENT ENROLLMENT
+// ============================================
 
 function toStudentDepartment(row: any): StudentDepartment {
   return {
@@ -1169,12 +1191,20 @@ export function getDepartmentsByStudent(studentId: string): Department[] {
   const rows = db.prepare(
     `SELECT d.* FROM departments d JOIN student_departments sd ON d.id = sd.department_id WHERE sd.student_id = ?`
   ).all(studentId) as unknown as any[];
-  return rows.map(toDepartment);
+  return rows.map((row: any) => ({
+    id: row.id,
+    collegeId: row.college_id,
+    name: row.name,
+    code: row.code,
+    category: row.category,
+    durationMonths: row.duration_months,
+    createdAt: normDate(row.created_at) ?? row.created_at,
+  }));
 }
 
-/* ============================================
-   STUDENTS (admin management)
-   ============================================ */
+// ============================================
+// STUDENTS (admin management)
+// ============================================
 
 export function getStudentsByCourse(courseId: string): User[] {
   const db = getDb();
