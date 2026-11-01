@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import {
   getAttendanceRecords,
   getAttendanceRecord,
@@ -6,6 +6,8 @@ import {
   getStudentsByCourse,
 } from '../store/db.js';
 import { authenticate } from '../middleware/auth.js';
+
+type AuthRequest = FastifyRequest & { user?: { id: string; role?: string } };
 
 const attendanceRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/v1/attendance - list attendance records
@@ -25,7 +27,8 @@ const attendanceRoutes: FastifyPluginAsync = async (fastify) => {
     '/attendance/:id',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const record = getAttendanceRecord(request.params.id as string);
+      const req = request as AuthRequest;
+      const record = getAttendanceRecord((req.params as { id: string }).id);
       if (!record) {
         return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Attendance record not found' } });
       }
@@ -38,7 +41,8 @@ const attendanceRoutes: FastifyPluginAsync = async (fastify) => {
     '/attendance',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const caller = request.user as { role?: string; id?: string } | undefined;
+      const req = request as AuthRequest;
+      const caller = req.user;
       const body = request.body as {
         courseId: string;
         studentId: string;
@@ -63,7 +67,8 @@ const attendanceRoutes: FastifyPluginAsync = async (fastify) => {
     '/attendance/bulk',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const caller = request.user as { role?: string; id?: string } | undefined;
+      const req = request as AuthRequest;
+      const caller = req.user;
       const body = request.body as {
         courseId: string;
         date: string; // YYYY-MM-DD
@@ -88,7 +93,8 @@ const attendanceRoutes: FastifyPluginAsync = async (fastify) => {
     '/attendance/course/:courseId/students',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const { courseId } = request.params as { courseId: string };
+      const req = request as AuthRequest;
+      const { courseId } = req.params as { courseId: string };
       const { date } = request.query as { date?: string };
       const students = getStudentsByCourse(courseId);
       const records = getAttendanceRecords(courseId, date);
