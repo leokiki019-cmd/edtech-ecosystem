@@ -48,7 +48,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
     try {
       final college = await ApiService.instance.getCollege();
       if (!mounted) return;
-      setState(() => _college = college);
+      if (college != null) setState(() => _college = college);
     } catch (_) {
       // Keep showing the last good snapshot.
     }
@@ -67,7 +67,10 @@ class _CoursesScreenState extends State<CoursesScreen> {
       if (!mounted) return;
       setState(() {
         _courses = results[0] as List<Course>;
-        _college = results[1] as College;
+        // Fall back to the bundled CTTC profile when the API is unreachable
+        // (e.g. the deployed site with no backend), mirroring the demo-data
+        // pattern used across ApiService.
+        _college = results[1] as College? ?? College.demo;
         _loading = false;
       });
     } catch (e) {
