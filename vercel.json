@@ -1,7 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "",
-  "installCommand": "npm install",
+  "buildCommand": "npm install",
   "functions": {
     "api/index.ts": {
       "maxDuration": 30,
