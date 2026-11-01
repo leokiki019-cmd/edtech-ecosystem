@@ -10,14 +10,7 @@ import { randomUUID } from 'node:crypto';
 let dbInstance: SqlJsDatabase | null = null;
 
 async function initDatabase(): Promise<SqlJsDatabase> {
-  const SQL = await initSqlJs({
-    locateFile: (file: string) => {
-      if (file === 'sql-wasm.wasm') {
-        return new URL('sql-wasm.wasm', import.meta.url).toString();
-      }
-      return file;
-    },
-  });
+  const SQL = await initSqlJs();
 
   // Get database path
   const defaultDataDir = process.env.VERCEL
