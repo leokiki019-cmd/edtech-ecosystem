@@ -70,9 +70,9 @@ export async function courseRoutes(app: FastifyInstance) {
       }
 
       const teacher = await getUser(course.teacherId);
-      const rosterPromises = course.studentIds.map((id) => getUser(id));
+      const rosterPromises = course.studentIds.map((id: string) => getUser(id));
       const roster = (await Promise.all(rosterPromises)).filter(
-        (u): u is User => Boolean(u),
+        (u: any): u is User => Boolean(u),
       );
       const courseAssignments = await getAssignmentsByCourse(course.id);
 
@@ -131,7 +131,7 @@ export async function courseRoutes(app: FastifyInstance) {
 
       const allSubmissions = await getSubmissionsByAssignment(assignment.id);
       const allUsers = await getUsers();
-      const roster = course.studentIds.map((studentId) => {
+      const roster = course.studentIds.map((studentId: string) => {
         const student = allUsers.find((u) => u.id === studentId);
         const submission = allSubmissions.find(
           (entry) => entry.studentId === studentId,
