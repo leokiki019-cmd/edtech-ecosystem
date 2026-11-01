@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import {
   getTeacherNotes,
   getTeacherNote,
@@ -6,6 +6,8 @@ import {
   deleteTeacherNote,
 } from '../store/db.js';
 import { authenticate } from '../middleware/auth.js';
+
+type AuthRequest = FastifyRequest & { user?: { id: string; role?: string } };
 
 const notesRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/v1/notes - list teacher notes
@@ -25,7 +27,8 @@ const notesRoutes: FastifyPluginAsync = async (fastify) => {
     '/notes/:id',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const note = getTeacherNote(request.params.id as string);
+      const req = request as AuthRequest;
+      const note = getTeacherNote((req.params as { id: string }).id);
       if (!note) {
         return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Note not found' } });
       }
@@ -38,7 +41,8 @@ const notesRoutes: FastifyPluginAsync = async (fastify) => {
     '/notes',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const caller = request.user as { role?: string; id?: string } | undefined;
+      const req = request as AuthRequest;
+      const caller = req.user;
       const body = request.body as {
         courseId: string;
         bookName: string;
@@ -63,8 +67,9 @@ const notesRoutes: FastifyPluginAsync = async (fastify) => {
     '/notes/:id',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const caller = request.user as { role?: string; id?: string } | undefined;
-      const note = getTeacherNote(request.params.id as string);
+      const req = request as AuthRequest;
+      const caller = req.user;
+      const note = getTeacherNote((req.params as { id: string }).id);
       if (!note) {
         return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Note not found' } });
       }
@@ -95,8 +100,9 @@ const notesRoutes: FastifyPluginAsync = async (fastify) => {
     '/notes/:id',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const caller = request.user as { role?: string; id?: string } | undefined;
-      const note = getTeacherNote(request.params.id as string);
+      const req = request as AuthRequest;
+      const caller = req.user;
+      const note = getTeacherNote((req.params as { id: string }).id);
       if (!note) {
         return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Note not found' } });
       }
