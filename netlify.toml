@@ -1,6 +1,6 @@
 [build]
   base = "apps/app"
-  command = "flutter build web --release && node scripts/bust_cache.js"
+  command = "flutter build web --release"
   publish = "build/web"
 
 [build.environment]

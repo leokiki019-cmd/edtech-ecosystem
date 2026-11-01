@@ -2,7 +2,12 @@ import Database from "better-sqlite3";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const dataDir = join(process.cwd(), "data");
+// Serverless hosts (Vercel sets VERCEL=1) have a read-only filesystem with
+// /tmp as the only writable path; DATA_DIR overrides either default.
+const defaultDataDir = process.env.VERCEL
+  ? "/tmp/edtech-data"
+  : join(process.cwd(), "data");
+const dataDir = process.env.DATA_DIR ?? defaultDataDir;
 if (!existsSync(dataDir)) {
   mkdirSync(dataDir, { recursive: true });
 }
@@ -68,10 +73,29 @@ function runMigrations() {
   }
 }
 
+// Resolve SQL files across runtimes: local dev runs with cwd=apps/api,
+// while Vercel bundles the function elsewhere and serves includeFiles at
+// paths relative to the project root.
+function readSql(name: string): string {
+  const candidates = [
+    join(process.cwd(), "db", name),
+    join(process.cwd(), "apps", "api", "db", name),
+    join(process.cwd(), "apps/api/db", name),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return readFileSync(candidate, "utf-8");
+    }
+  }
+  throw new Error(
+    `Cannot find db/${name}. Looked in: ${candidates.join(", ")}`,
+  );
+}
+
 export function initDb() {
   migrateDepartmentsTable();
 
-  const schema = readFileSync(join(process.cwd(), "db", "schema.sql"), "utf-8");
+  const schema = readSql("schema.sql");
   db.exec(schema);
 
   const count = db.prepare("SELECT COUNT(*) AS c FROM users").get() as { c: number };
@@ -81,8 +105,7 @@ export function initDb() {
   // Seed when the database is fresh, or when only the college reference rows
   // are missing (added later; INSERT OR IGNORE keeps re-seeding idempotent).
   if (count.c === 0 || deptCount.c === 0) {
-    const seed = readFileSync(join(process.cwd(), "db", "seed.sql"), "utf-8");
-    db.exec(seed);
+    db.exec(readSql("seed.sql"));
   }
 
   runMigrations();
