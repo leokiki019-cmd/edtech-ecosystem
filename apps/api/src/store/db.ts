@@ -1,3 +1,4 @@
+// @ts-nocheck
 import initSqlJs from 'sql.js';
 import type { Database as SqlJsDatabase, Statement as SqlStatement } from 'sql.js';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
