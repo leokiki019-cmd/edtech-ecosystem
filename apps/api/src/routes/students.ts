@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import {
   getUsers,
@@ -15,6 +15,8 @@ import {
 } from '../store/db.js';
 import { authenticate } from '../middleware/auth.js';
 import type { User, Role } from "../store/db";
+
+type AuthRequest = FastifyRequest & { user?: { id: string; role?: string } };
 
 const studentsRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/v1/students - list all students (admin/teacher)
@@ -33,7 +35,8 @@ const studentsRoutes: FastifyPluginAsync = async (fastify) => {
     '/students/:id',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const user = getUsers().find((u) => u.id === request.params.id);
+      const req = request as AuthRequest;
+      const user = getUsers().find((u) => u.id === (req.params as { id: string }).id);
       if (!user || user.role !== 'student') {
         return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Student not found' } });
       }
@@ -46,7 +49,8 @@ const studentsRoutes: FastifyPluginAsync = async (fastify) => {
     '/students',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const caller = request.user as { role?: Role } | undefined;
+      const req = request as AuthRequest;
+      const caller = req.user;
       if (caller?.role !== 'admin') {
         return reply.code(403).send({ error: { code: 'FORBIDDEN', message: 'Admin only' } });
       }
@@ -91,7 +95,8 @@ const studentsRoutes: FastifyPluginAsync = async (fastify) => {
     '/students/:id',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const caller = request.user as { role?: Role } | undefined;
+      const req = request as AuthRequest;
+      const caller = req.user;
       if (caller?.role !== 'admin') {
         return reply.code(403).send({ error: { code: 'FORBIDDEN', message: 'Admin only' } });
       }
@@ -101,7 +106,7 @@ const studentsRoutes: FastifyPluginAsync = async (fastify) => {
         phone: string;
         courseId: string;
       }>;
-      const studentId = request.params.id as string;
+      const studentId = (req.params as { id: string }).id;
       const updates: Record<string, any> = {};
       if (body.displayName !== undefined) updates.displayName = body.displayName;
       if (body.email !== undefined) updates.email = body.email;
@@ -129,11 +134,12 @@ const studentsRoutes: FastifyPluginAsync = async (fastify) => {
     '/students/:id',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const caller = request.user as { role?: Role } | undefined;
+      const req = request as AuthRequest;
+      const caller = req.user;
       if (caller?.role !== 'admin') {
         return reply.code(403).send({ error: { code: 'FORBIDDEN', message: 'Admin only' } });
       }
-      const studentId = request.params.id as string;
+      const studentId = (req.params as { id: string }).id;
       // Remove from all courses
       const courses = getCourses();
       for (const course of courses) {
@@ -155,7 +161,8 @@ const studentsRoutes: FastifyPluginAsync = async (fastify) => {
     '/students/:id/departments',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const departments = getDepartmentsByStudent(request.params.id as string);
+      const req = request as AuthRequest;
+      const departments = getDepartmentsByStudent((req.params as { id: string }).id);
       return reply.send({ data: departments });
     }
   );
@@ -165,15 +172,16 @@ const studentsRoutes: FastifyPluginAsync = async (fastify) => {
     '/students/:id/departments',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const caller = request.user as { role?: Role } | undefined;
+      const req = request as AuthRequest;
+      const caller = req.user;
       if (caller?.role !== 'admin') {
         return reply.code(403).send({ error: { code: 'FORBIDDEN', message: 'Admin only' } });
       }
       const body = request.body as { departmentId: string };
       const enrollment = enrollStudentInDepartment({
-        studentId: request.params.id as string,
+        studentId: (req.params as { id: string }).id,
         departmentId: body.departmentId,
-        enrolledBy: caller?.id ?? request.params.id,
+        enrolledBy: caller?.id ?? (req.params as { id: string }).id,
       });
       return reply.code(201).send({ data: enrollment });
     }
@@ -184,13 +192,14 @@ const studentsRoutes: FastifyPluginAsync = async (fastify) => {
     '/students/:id/departments/:departmentId',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const caller = request.user as { role?: Role } | undefined;
+      const req = request as AuthRequest;
+      const caller = req.user;
       if (caller?.role !== 'admin') {
         return reply.code(403).send({ error: { code: 'FORBIDDEN', message: 'Admin only' } });
       }
       unenrollStudentFromDepartment(
-        request.params.id as string,
-        request.params.departmentId as string
+        (req.params as { id: string }).id,
+        (req.params as { departmentId: string }).departmentId
       );
       return reply.send({ data: { success: true } });
     }
@@ -201,7 +210,8 @@ const studentsRoutes: FastifyPluginAsync = async (fastify) => {
     '/courses/:courseId/students',
     { preHandler: [authenticate] },
     async (request, reply) => {
-      const students = getStudentsByCourse(request.params.courseId as string);
+      const req = request as AuthRequest;
+      const students = getStudentsByCourse((req.params as { courseId: string }).courseId);
       return reply.send({ data: students });
     }
   );
