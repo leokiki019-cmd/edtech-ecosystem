@@ -1,7 +1,8 @@
-import { Database as SqlJsDatabase, initSqlJs } from 'sql.js';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:path';
+import initSqlJs from 'sql.js';
+import type { Database as SqlJsDatabase, Statement as SqlStatement } from 'sql.js';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import * as fs from 'node:fs';
 
 // sql.js is pure JavaScript + WebAssembly - works on Vercel serverless
 // without native compilation (unlike better-sqlite3).
@@ -20,18 +21,18 @@ async function initDatabase(): Promise<SqlJsDatabase> {
   // Get database path
   const defaultDataDir = process.env.VERCEL
     ? '/tmp/edtech-data'
-    : process.cwd() + '/data';
+    : join(process.cwd(), 'data');
   const dataDir = process.env.DATA_DIR ?? defaultDataDir;
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+  if (!existsSync(dataDir)) {
+    mkdirSync(dataDir, { recursive: true });
   }
-  const dbPath = dataDir + '/edtech.sqlite';
+  const dbPath = join(dataDir, 'edtech.sqlite');
 
   // Try to load existing database from file
   let buffer: Uint8Array | null = null;
   try {
-    if (fs.existsSync(dbPath)) {
-      buffer = fs.readFileSync(dbPath);
+    if (existsSync(dbPath)) {
+      buffer = readFileSync(dbPath);
     }
   } catch {
     // File doesn't exist yet, start fresh
@@ -61,12 +62,12 @@ function getDb(): SqlJsDatabase {
 function saveDbToFile(db: SqlJsDatabase): void {
   const defaultDataDir = process.env.VERCEL
     ? '/tmp/edtech-data'
-    : process.cwd() + '/data';
+    : join(process.cwd(), 'data');
   const dataDir = process.env.DATA_DIR ?? defaultDataDir;
-  const dbPath = dataDir + '/edtech.sqlite';
+  const dbPath = join(dataDir, 'edtech.sqlite');
   try {
     const data = db.export();
-    fs.writeFileSync(dbPath, Buffer.from(data as Uint8Array));
+    writeFileSync(dbPath, Buffer.from(data as Uint8Array));
   } catch {
     // Best-effort persistence
   }
@@ -336,13 +337,13 @@ function runMigrations(db: SqlJsDatabase): void {
 
 function readSql(name: string): string {
   const candidates = [
-    process.cwd() + '/db/' + name,
-    process.cwd() + '/apps/api/db/' + name,
-    process.cwd() + '/apps/api/db/' + name,
+    join(process.cwd(), 'db', name),
+    join(process.cwd(), 'apps', 'api', 'db', name),
+    join(process.cwd(), 'apps/api/db', name),
   ];
   for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      return fs.readFileSync(candidate, 'utf-8');
+    if (existsSync(candidate)) {
+      return readFileSync(candidate, 'utf-8');
     }
   }
   throw new Error(`Cannot find db/${name}. Looked in: ${candidates.join(", ")}`);
