@@ -185,3 +185,65 @@ export interface ApiError {
 export interface ApiResponse<T> {
   data: T;
 }
+
+/* ============================================
+   NEW: Attendance
+   ============================================ */
+
+export type AttendanceStatus = "present" | "absent" | "late" | "excused";
+
+export interface AttendanceRecord {
+  id: string;
+  courseId: string;
+  studentId: string;
+  date: string; // YYYY-MM-DD
+  status: AttendanceStatus;
+  markedBy: string;
+  notes: string;
+  createdAt: string;
+}
+
+/* ============================================
+   NEW: Teacher Notes (book + course code)
+   ============================================ */
+
+export interface TeacherNote {
+  id: string;
+  courseId: string;
+  bookName: string;
+  courseCode: string;
+  title: string;
+  content: string;
+  authorId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/* ============================================
+   NEW: Student Department Enrollment
+   ============================================ */
+
+export interface StudentDepartment {
+  id: string;
+  studentId: string;
+  departmentId: string;
+  enrolledAt: string;
+  enrolledBy: string;
+}
+
+/* ============================================
+   NEW: Excel Import/Export payloads
+   ============================================ */
+
+export interface StudentImportRow {
+  name: string;
+  rollNumber: string;
+  contact: string;
+  courseId?: string;
+  departmentId?: string;
+}
+
+export interface StudentImportResult {
+  imported: number;
+  errors: { row: number; message: string }[];
+}

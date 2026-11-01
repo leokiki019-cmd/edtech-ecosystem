@@ -2,11 +2,15 @@ import 'package:edtech_app/auth/auth_provider.dart';
 import 'package:edtech_app/auth/login_screen.dart';
 import 'package:edtech_app/auth/signup_screen.dart';
 import 'package:edtech_app/auth/verify_sms_screen.dart';
+import 'package:edtech_app/screens/attendance_screen.dart';
 import 'package:edtech_app/screens/calendar_screen.dart';
 import 'package:edtech_app/screens/chat_screen.dart';
 import 'package:edtech_app/screens/courses_screen.dart';
 import 'package:edtech_app/screens/dashboard_screen.dart';
+import 'package:edtech_app/screens/department_management_screen.dart';
 import 'package:edtech_app/screens/integrity_screen.dart';
+import 'package:edtech_app/screens/notes_screen.dart';
+import 'package:edtech_app/screens/student_management_screen.dart';
 import 'package:edtech_app/services/api_service.dart';
 import 'package:edtech_app/theme.dart';
 import 'package:edtech_app/widgets/bottom_nav.dart';
@@ -45,6 +49,22 @@ class _EdTechAppState extends State<EdTechApp> {
       GoRoute(
         path: '/verify-sms',
         builder: (context, state) => const VerifySmsScreen(),
+      ),
+      GoRoute(
+        path: '/students',
+        builder: (context, state) => const StudentManagementScreen(),
+      ),
+      GoRoute(
+        path: '/departments',
+        builder: (context, state) => const DepartmentManagementScreen(),
+      ),
+      GoRoute(
+        path: '/attendance',
+        builder: (context, state) => const AttendanceScreen(),
+      ),
+      GoRoute(
+        path: '/notes',
+        builder: (context, state) => const NotesScreen(),
       ),
     ],
   );
@@ -125,6 +145,10 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
     const CalendarScreen(),
     const ChatScreen(),
     const IntegrityScreen(),
+    const StudentManagementScreen(),
+    const DepartmentManagementScreen(),
+    const AttendanceScreen(),
+    const NotesScreen(),
   ];
 
   static const List<String> _titles = <String>[
@@ -133,6 +157,10 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
     'Calendar',
     'Chat',
     'Integrity',
+    'Students',
+    'Departments',
+    'Attendance',
+    'Notes',
   ];
 
   static const List<IconData> _icons = <IconData>[
@@ -141,6 +169,10 @@ class _ResponsiveShellState extends State<ResponsiveShell> {
     Icons.calendar_month_rounded,
     Icons.chat_bubble_rounded,
     Icons.verified_rounded,
+    Icons.people_rounded,
+    Icons.business_rounded,
+    Icons.check_circle_rounded,
+    Icons.note_rounded,
   ];
 
   void _selectTab(int index) {

@@ -547,3 +547,289 @@ export function verifySmsCode(phone: string, code: string): boolean {
 export function markPhoneVerified(phone: string): void {
   db.prepare('UPDATE users SET is_phone_verified = 1 WHERE phone = ?').run(phone);
 }
+
+/* ============================================
+   ATTENDANCE RECORDS
+   ============================================ */
+
+export interface AttendanceRecord {
+  id: string;
+  courseId: string;
+  studentId: string;
+  date: string; // YYYY-MM-DD
+  status: 'present' | 'absent' | 'late' | 'excused';
+  markedBy: string;
+  notes: string;
+  createdAt: string;
+}
+
+function toAttendanceRecord(row: any): AttendanceRecord {
+  return {
+    id: row.id,
+    courseId: row.course_id,
+    studentId: row.student_id,
+    date: row.date,
+    status: row.status,
+    markedBy: row.marked_by,
+    notes: row.notes ?? '',
+    createdAt: normDate(row.created_at) ?? row.created_at,
+  };
+}
+
+export function getAttendanceRecords(courseId?: string, date?: string): AttendanceRecord[] {
+  let sql = 'SELECT * FROM attendance_records';
+  const params: any[] = [];
+  const conditions: string[] = [];
+  if (courseId) {
+    conditions.push('course_id = ?');
+    params.push(courseId);
+  }
+  if (date) {
+    conditions.push('date = ?');
+    params.push(date);
+  }
+  if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
+  sql += ' ORDER BY date DESC, student_id';
+  return (db.prepare(sql).all(...params) as unknown as any[]).map(toAttendanceRecord);
+}
+
+export function getAttendanceRecord(id: string): AttendanceRecord | undefined {
+  const row = db.prepare('SELECT * FROM attendance_records WHERE id = ?').get(id) as any;
+  if (!row) return undefined;
+  return toAttendanceRecord(row);
+}
+
+export function upsertAttendanceRecord(input: {
+  id?: string;
+  courseId: string;
+  studentId: string;
+  date: string;
+  status: AttendanceRecord['status'];
+  markedBy: string;
+  notes?: string;
+}): AttendanceRecord {
+  const id = input.id || randomUUID();
+  const now = new Date().toISOString();
+  const exists = db.prepare('SELECT id FROM attendance_records WHERE course_id = ? AND student_id = ? AND date = ?')
+    .get(input.courseId, input.studentId, input.date) as any;
+  if (exists) {
+    db.prepare(
+      `UPDATE attendance_records SET status = ?, marked_by = ?, notes = ?, updated_at = ? WHERE id = ?`
+    ).run(input.status, input.markedBy, input.notes ?? '', now, exists.id);
+    return { ...toAttendanceRecord(db.prepare('SELECT * FROM attendance_records WHERE id = ?').get(exists.id)!), id: exists.id };
+  }
+  db.prepare(
+    `INSERT INTO attendance_records (id, course_id, student_id, date, status, marked_by, notes, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, input.courseId, input.studentId, input.date, input.status, input.markedBy, input.notes ?? '', now);
+  return {
+    id,
+    courseId: input.courseId,
+    studentId: input.studentId,
+    date: input.date,
+    status: input.status,
+    markedBy: input.markedBy,
+    notes: input.notes ?? '',
+    createdAt: now,
+  };
+}
+
+/* ============================================
+   TEACHER NOTES
+   ============================================ */
+
+export interface TeacherNote {
+  id: string;
+  courseId: string;
+  bookName: string;
+  courseCode: string;
+  title: string;
+  content: string;
+  authorId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function toTeacherNote(row: any): TeacherNote {
+  return {
+    id: row.id,
+    courseId: row.course_id,
+    bookName: row.book_name,
+    courseCode: row.course_code,
+    title: row.title,
+    content: row.content ?? '',
+    authorId: row.author_id,
+    createdAt: normDate(row.created_at) ?? row.created_at,
+    updatedAt: normDate(row.updated_at) ?? row.updated_at,
+  };
+}
+
+export function getTeacherNotes(courseId?: string, courseCode?: string): TeacherNote[] {
+  let sql = 'SELECT * FROM teacher_notes';
+  const params: any[] = [];
+  const conditions: string[] = [];
+  if (courseId) {
+    conditions.push('course_id = ?');
+    params.push(courseId);
+  }
+  if (courseCode) {
+    conditions.push('course_code = ?');
+    params.push(courseCode);
+  }
+  if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
+  sql += ' ORDER BY created_at DESC';
+  return (db.prepare(sql).all(...params) as unknown as any[]).map(toTeacherNote);
+}
+
+export function getTeacherNote(id: string): TeacherNote | undefined {
+  const row = db.prepare('SELECT * FROM teacher_notes WHERE id = ?').get(id) as any;
+  if (!row) return undefined;
+  return toTeacherNote(row);
+}
+
+export function upsertTeacherNote(input: {
+  id?: string;
+  courseId: string;
+  bookName: string;
+  courseCode: string;
+  title: string;
+  content: string;
+  authorId: string;
+}): TeacherNote {
+  const id = input.id || randomUUID();
+  const now = new Date().toISOString();
+  const existing = db.prepare('SELECT id FROM teacher_notes WHERE id = ?').get(id) as any;
+  if (existing) {
+    db.prepare(
+      `UPDATE teacher_notes SET book_name = ?, course_code = ?, title = ?, content = ?, updated_at = ? WHERE id = ?`
+    ).run(input.bookName, input.courseCode, input.title, input.content, now, id);
+    return { ...toTeacherNote(db.prepare('SELECT * FROM teacher_notes WHERE id = ?').get(id)!), id };
+  }
+  db.prepare(
+    `INSERT INTO teacher_notes (id, course_id, book_name, course_code, title, content, author_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, input.courseId, input.bookName, input.courseCode, input.title, input.content, input.authorId, now, now);
+  return {
+    id,
+    courseId: input.courseId,
+    bookName: input.bookName,
+    courseCode: input.courseCode,
+    title: input.title,
+    content: input.content,
+    authorId: input.authorId,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function deleteTeacherNote(id: string): void {
+  db.prepare('DELETE FROM teacher_notes WHERE id = ?').run(id);
+}
+
+/* ============================================
+   STUDENT DEPARTMENT ENROLLMENT (drag-drop)
+   ============================================ */
+
+export interface StudentDepartment {
+  id: string;
+  studentId: string;
+  departmentId: string;
+  enrolledAt: string;
+  enrolledBy: string;
+}
+
+function toStudentDepartment(row: any): StudentDepartment {
+  return {
+    id: row.id,
+    studentId: row.student_id,
+    departmentId: row.department_id,
+    enrolledAt: normDate(row.enrolled_at) ?? row.enrolled_at,
+    enrolledBy: row.enrolled_by,
+  };
+}
+
+export function getStudentDepartments(studentId?: string, departmentId?: string): StudentDepartment[] {
+  let sql = 'SELECT * FROM student_departments';
+  const params: any[] = [];
+  const conditions: string[] = [];
+  if (studentId) {
+    conditions.push('student_id = ?');
+    params.push(studentId);
+  }
+  if (departmentId) {
+    conditions.push('department_id = ?');
+    params.push(departmentId);
+  }
+  if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
+  sql += ' ORDER BY enrolled_at DESC';
+  return (db.prepare(sql).all(...params) as unknown as any[]).map(toStudentDepartment);
+}
+
+export function enrollStudentInDepartment(input: {
+  studentId: string;
+  departmentId: string;
+  enrolledBy: string;
+}): StudentDepartment {
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  db.prepare(
+    `INSERT OR IGNORE INTO student_departments (id, student_id, department_id, enrolled_at, enrolled_by)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(id, input.studentId, input.departmentId, now, input.enrolledBy);
+  return {
+    id,
+    studentId: input.studentId,
+    departmentId: input.departmentId,
+    enrolledAt: now,
+    enrolledBy: input.enrolledBy,
+  };
+}
+
+export function unenrollStudentFromDepartment(studentId: string, departmentId: string): void {
+  db.prepare('DELETE FROM student_departments WHERE student_id = ? AND department_id = ?').run(studentId, departmentId);
+}
+
+export function getStudentsByDepartment(departmentId: string): User[] {
+  const rows = db.prepare(
+    `SELECT u.* FROM users u JOIN student_departments sd ON u.id = sd.student_id WHERE sd.department_id = ?`
+  ).all(departmentId) as unknown as any[];
+  return rows.map(toUser);
+}
+
+export function getDepartmentsByStudent(studentId: string): Department[] {
+  const rows = db.prepare(
+    `SELECT d.* FROM departments d JOIN student_departments sd ON d.id = sd.department_id WHERE sd.student_id = ?`
+  ).all(studentId) as unknown as any[];
+  return rows.map(toDepartment);
+}
+
+/* ============================================
+   STUDENTS (admin management)
+   ============================================ */
+
+export function getStudentsByCourse(courseId: string): User[] {
+  const course = db.prepare('SELECT student_ids FROM courses WHERE id = ?').get(courseId) as { student_ids: string } | undefined;
+  if (!course) return [];
+  const studentIds = parseJson(course.student_ids, []);
+  if (studentIds.length === 0) return [];
+  const placeholders = studentIds.map(() => '?').join(', ');
+  const rows = db.prepare(`SELECT * FROM users WHERE id IN (${placeholders}) AND role = 'student'`).all(...studentIds) as unknown as any[];
+  return rows.map(toUser);
+}
+
+export function addStudentToCourse(courseId: string, studentId: string): void {
+  const course = db.prepare('SELECT student_ids FROM courses WHERE id = ?').get(courseId) as { student_ids: string } | undefined;
+  if (!course) return;
+  const ids = parseJson(course.student_ids, []);
+  if (!ids.includes(studentId)) {
+    ids.push(studentId);
+    db.prepare('UPDATE courses SET student_ids = ? WHERE id = ?').run(JSON.stringify(ids), courseId);
+  }
+}
+
+export function removeStudentFromCourse(courseId: string, studentId: string): void {
+  const course = db.prepare('SELECT student_ids FROM courses WHERE id = ?').get(courseId) as { student_ids: string } | undefined;
+  if (!course) return;
+  const ids = parseJson(course.student_ids, []).filter((id: string) => id !== studentId);
+  db.prepare('UPDATE courses SET student_ids = ? WHERE id = ?').run(JSON.stringify(ids), courseId);
+}

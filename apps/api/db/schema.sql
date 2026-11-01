@@ -164,3 +164,61 @@ CREATE INDEX IF NOT EXISTS idx_telemetry_batch ON telemetry_events(batch_id);
 CREATE INDEX IF NOT EXISTS idx_effort_student_assignment ON effort_scores(student_id, assignment_id);
 CREATE INDEX IF NOT EXISTS idx_messages_channel ON chat_messages(channel_id);
 CREATE INDEX IF NOT EXISTS idx_calendar_course ON calendar_events(course_id);
+
+-- ============================================
+-- NEW: Attendance tracking
+-- ============================================
+CREATE TABLE IF NOT EXISTS attendance_records (
+  id TEXT PRIMARY KEY,
+  course_id TEXT NOT NULL,
+  student_id TEXT NOT NULL,
+  date TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('present', 'absent', 'late', 'excused')),
+  marked_by TEXT NOT NULL,
+  notes TEXT DEFAULT '',
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (course_id) REFERENCES courses(id),
+  FOREIGN KEY (student_id) REFERENCES users(id),
+  FOREIGN KEY (marked_by) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_attendance_course_date ON attendance_records(course_id, date);
+CREATE INDEX IF NOT EXISTS idx_attendance_student ON attendance_records(student_id);
+
+-- ============================================
+-- NEW: Teacher notes (by book name + course code)
+-- ============================================
+CREATE TABLE IF NOT EXISTS teacher_notes (
+  id TEXT PRIMARY KEY,
+  course_id TEXT NOT NULL,
+  book_name TEXT NOT NULL,
+  course_code TEXT NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL DEFAULT '',
+  author_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (course_id) REFERENCES courses(id),
+  FOREIGN KEY (author_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_notes_course ON teacher_notes(course_id);
+CREATE INDEX IF NOT EXISTS idx_notes_code ON teacher_notes(course_code);
+
+-- ============================================
+-- NEW: Department enrollments (drag-drop mapping)
+-- ============================================
+CREATE TABLE IF NOT EXISTS student_departments (
+  id TEXT PRIMARY KEY,
+  student_id TEXT NOT NULL,
+  department_id TEXT NOT NULL,
+  enrolled_at TEXT NOT NULL,
+  enrolled_by TEXT NOT NULL,
+  FOREIGN KEY (student_id) REFERENCES users(id),
+  FOREIGN KEY (department_id) REFERENCES departments(id),
+  FOREIGN KEY (enrolled_by) REFERENCES users(id),
+  UNIQUE(student_id, department_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_student_dept_student ON student_departments(student_id);
+CREATE INDEX IF NOT EXISTS idx_student_dept_dept ON student_departments(department_id);

@@ -9,6 +9,11 @@ import { authRoutes } from "./routes/auth";
 import { classroomRoutes } from "./routes/classroom";
 import { courseRoutes } from "./routes/courses";
 import { telemetryRoutes } from "./routes/telemetry";
+import { studentsRoutes } from "./routes/students";
+import { departmentsRoutes } from "./routes/departments";
+import { attendanceRoutes } from "./routes/attendance";
+import { notesRoutes } from "./routes/notes";
+import { excelRoutes } from "./routes/excel";
 
 const PUBLIC_PREFIXES = ["/health", "/api/v1/auth"];
 
@@ -44,6 +49,11 @@ export async function buildApp() {
   await app.register(telemetryRoutes, { prefix: "/api/v1" });
   await app.register(classroomRoutes, { prefix: "/api/v1" });
   await app.register(authRoutes, { prefix: "/api/v1/auth" });
+  await app.register(studentsRoutes, { prefix: "/api/v1" });
+  await app.register(departmentsRoutes, { prefix: "/api/v1" });
+  await app.register(attendanceRoutes, { prefix: "/api/v1" });
+  await app.register(notesRoutes, { prefix: "/api/v1" });
+  await app.register(excelRoutes, { prefix: "/api/v1" });
 
   app.setNotFoundHandler((request, reply) => {
     const error: ApiError = {

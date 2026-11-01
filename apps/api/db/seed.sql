@@ -69,3 +69,18 @@ INSERT OR IGNORE INTO submissions (id, assignment_id, student_id, status, submit
 ('s-001', 'a-001', 'u-student-1', 'submitted', datetime('now', '-20 hours'), '[{"id":"att-001","fileName":"usability-study-report.pdf","mimeType":"application/pdf","sizeBytes":482133,"url":"https://files.example.edu/att-001"}]', NULL, 84, datetime('now', '-20 hours')),
 ('s-002', 'a-002', 'u-student-2', 'pending', NULL, '[]', NULL, NULL, datetime('now')),
 ('s-003', 'a-004', 'u-student-3', 'late', datetime('now', '-1 days'), '[{"id":"att-002","fileName":"heuristic-evaluation.docx","mimeType":"application/vnd.openxmlformats-officedocument.wordprocessingml.document","sizeBytes":91204,"url":"https://files.example.edu/att-002"}]', 72, 58, datetime('now', '-1 days'));
+
+-- ============================================
+-- SEED: Sample attendance records
+-- ============================================
+INSERT OR IGNORE INTO attendance_records (id, course_id, student_id, date, status, marked_by, notes, created_at) VALUES
+('att-r-1', 'c-001', 'u-student-1', date('now'), 'present', 'u-teacher-1', '', datetime('now', '-1 days')),
+('att-r-2', 'c-001', 'u-student-2', date('now'), 'present', 'u-teacher-1', '', datetime('now', '-1 days')),
+('att-r-3', 'c-001', 'u-student-3', date('now'), 'absent', 'u-teacher-1', 'Sick leave', datetime('now', '-1 days'));
+
+-- ============================================
+-- SEED: Sample teacher notes
+-- ============================================
+INSERT OR IGNORE INTO teacher_notes (id, course_id, book_name, course_code, title, content, author_id, created_at, updated_at) VALUES
+('note-1', 'c-001', 'Interaction Design Beyond Human-Computer Interaction', 'CIT-301', 'Week 1 Notes: Usability Principles', 'Covered Nielsen''s 10 heuristics, visibility of system status, and user control. Key takeaway: consistency and standards reduce cognitive load.', 'u-teacher-1', datetime('now', '-5 days'), datetime('now', '-5 days')),
+('note-2', 'c-001', 'Don''t Make Me Think', 'CIT-301', 'Week 2 Notes: Web Navigation Best Practices', 'Discussed intuitive navigation, clear labeling, and the importance of the three-click rule for web development interfaces.', 'u-teacher-1', datetime('now', '-3 days'), datetime('now', '-3 days'));
