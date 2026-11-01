@@ -340,7 +340,9 @@ export interface SmsCode {
 // ============================================
 
 export async function initDb(): Promise<void> {
-  await initDatabase();
+  if (!initialized) {
+    initialized = true;
+  }
 }
 
 // ============================================
