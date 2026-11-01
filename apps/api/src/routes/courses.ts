@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
-import type { ApiError, Attachment, Submission, User } from "@edtech/shared";
+import type { ApiError, Attachment, Submission, User } from "../store/db";
 import {
   createSubmission,
   getAssignment,

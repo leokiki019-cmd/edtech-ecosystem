@@ -5,7 +5,7 @@ import type {
   IntegrityReport,
   SignedTelemetryBatch,
   TelemetryEvent,
-} from "@edtech/shared";
+} from "../store/db";
 import {
   createTelemetryBatch,
   getAssignment,

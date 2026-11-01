@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
-import type { ApiError } from "@edtech/shared";
+import type { ApiError } from "../store/db";
 import { verifyToken } from "../routes/auth";
 
 const fail = (

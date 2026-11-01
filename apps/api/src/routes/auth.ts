@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import type { FastifyInstance, FastifyReply } from "fastify";
-import type { ApiError, User } from "@edtech/shared";
+import type { ApiError, User } from "../store/db";
 import {
   createUser,
   getUser,

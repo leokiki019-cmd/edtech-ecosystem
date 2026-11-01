@@ -9,7 +9,7 @@ import type {
   SignedTelemetryBatch,
   Submission,
   User,
-} from "@edtech/shared";
+} from "./db";
 
 const now = Date.now();
 const dayMs = 86_400_000;

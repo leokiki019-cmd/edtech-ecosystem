@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { getStudentsByCourse, createUser, getUsers } from '../store/db.js';
 import { authenticate } from '../middleware/auth.js';
-import type { Role } from '@edtech/shared';
+import type { Role } from "../store/db";
 
 const excelRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /api/v1/excel/import/students - import students from Excel

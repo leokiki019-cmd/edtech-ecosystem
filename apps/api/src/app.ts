@@ -1,10 +1,13 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
 import type { FastifyError } from "fastify";
-import type { ApiError } from "@edtech/shared";
 import { authenticate } from "./middleware/auth";
 import { config } from "./config";
 import { initDb } from "./db";
+
+interface ApiError {
+  error: { code: string; message: string };
+}
 import { authRoutes } from "./routes/auth";
 import { classroomRoutes } from "./routes/classroom";
 import { courseRoutes } from "./routes/courses";

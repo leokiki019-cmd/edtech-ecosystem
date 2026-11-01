@@ -14,7 +14,7 @@ import {
   removeStudentFromCourse,
 } from '../store/db.js';
 import { authenticate } from '../middleware/auth.js';
-import type { User, Role } from '@edtech/shared';
+import type { User, Role } from "../store/db";
 
 const studentsRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/v1/students - list all students (admin/teacher)

@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
-import type { ApiError, ChatMessage } from "@edtech/shared";
+import type { ApiError, ChatMessage } from "../store/db";
 import {
   createMessage,
   getCalendarEvents,

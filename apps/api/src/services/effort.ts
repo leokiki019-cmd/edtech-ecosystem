@@ -1,4 +1,4 @@
-import type { EffortScore, IntegrityFlag, TelemetryEvent } from "@edtech/shared";
+import type { EffortScore, IntegrityFlag, TelemetryEvent } from "../store/db";
 
 export interface EffortMetrics {
   keystrokes: number;
