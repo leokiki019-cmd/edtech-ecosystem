@@ -67,6 +67,18 @@ class _EdTechAppState extends State<EdTechApp> {
     super.dispose();
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(
+      routerConfig: _router,
+      title: 'EdTech Ecosystem',
+      debugShowCheckedModeBanner: false,
+      theme: appTheme,
+      builder: (context, child) => _PageTransitionHost(child: child ?? const SizedBox()),
+    );
+  }
+}
+
 /// Wraps routed pages in a soft fade + slide-up so switching between
 /// login / dashboard feels like it "pops in".
 class _PageTransitionHost extends StatelessWidget {

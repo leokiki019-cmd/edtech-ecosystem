@@ -6,9 +6,9 @@ import 'package:edtech_app/models/attachment.dart';
 import 'package:edtech_app/models/calendar_event.dart';
 import 'package:edtech_app/models/channel.dart';
 import 'package:edtech_app/models/chat_message.dart';
+import 'package:edtech_app/models/college.dart';
 import 'package:edtech_app/models/course.dart';
 import 'package:edtech_app/models/effort_report.dart';
-import 'package:edtech_app/models/effort_score.dart';
 import 'package:edtech_app/models/submission.dart';
 import 'package:http/http.dart' as http;
 
@@ -42,6 +42,22 @@ class ApiService {
       return data.map((item) => Course.fromJson(item as Map<String, dynamic>)).toList();
     } catch (_) {
       return _demoCourses;
+    }
+  }
+
+  Future<College?> getCollege() async {
+    try {
+      final response = await _client.get(
+        Uri.parse('${AppConfig.apiBaseUrl}/college'),
+        headers: _authHeaders(),
+      ).timeout(const Duration(seconds: 8));
+      if (response.statusCode == 404) {
+        return null;
+      }
+      _throwOnError(response);
+      return College.fromJson(jsonDecode(response.body)['data'] as Map<String, dynamic>);
+    } catch (_) {
+      return null;
     }
   }
 
