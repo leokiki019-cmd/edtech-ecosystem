@@ -25,7 +25,8 @@ export async function buildApp() {
 
   // Enforce bearer-token authentication on every route except public ones.
   app.addHook("preHandler", async (request, reply) => {
-    const url = request.routerPath ?? request.url;
+    // Fastify v5 renamed routerPath -> routeOptions.url.
+    const url = request.routeOptions?.url ?? request.url;
     if (PUBLIC_PREFIXES.some((prefix) => url.startsWith(prefix))) {
       return;
     }
