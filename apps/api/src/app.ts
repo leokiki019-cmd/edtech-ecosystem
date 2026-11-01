@@ -9,11 +9,11 @@ import { authRoutes } from "./routes/auth";
 import { classroomRoutes } from "./routes/classroom";
 import { courseRoutes } from "./routes/courses";
 import { telemetryRoutes } from "./routes/telemetry";
-import { studentsRoutes } from "./routes/students";
-import { departmentsRoutes } from "./routes/departments";
-import { attendanceRoutes } from "./routes/attendance";
-import { notesRoutes } from "./routes/notes";
-import { excelRoutes } from "./routes/excel";
+import studentsRoutes from "./routes/students";
+import departmentsRoutes from "./routes/departments";
+import attendanceRoutes from "./routes/attendance";
+import notesRoutes from "./routes/notes";
+import excelRoutes from "./routes/excel";
 
 const PUBLIC_PREFIXES = ["/health", "/api/v1/auth"];
 

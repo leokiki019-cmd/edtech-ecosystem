@@ -1186,6 +1186,3 @@ export function getStudentsByCourse(courseId: string): User[] {
   const rows = db.prepare(`SELECT * FROM users WHERE id IN (${placeholders}) AND role = 'student'`).all(...studentIds) as unknown as any[];
   return rows.map(toUser);
 }
-
-// Re-export initDb for use in app.ts
-export { initDb };
