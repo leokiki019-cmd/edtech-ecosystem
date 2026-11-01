@@ -52,7 +52,7 @@ dbPromise.then((db) => {
   dbInstance = db;
 });
 
-function getDb(): SqlJsDatabase {
+function getDb(): any {
   if (!dbInstance) {
     throw new Error('Database not initialized');
   }
