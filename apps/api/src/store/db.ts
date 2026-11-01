@@ -38,7 +38,7 @@ async function initDatabase(): Promise<SqlJsDatabase> {
     // File doesn't exist yet, start fresh
   }
 
-  const db = new SQL.Database(buffer ? { file: buffer } : {});
+  const db = new (SQL as any).Database(buffer ? { file: buffer } : {});
 
   // Enable foreign keys
   db.run('PRAGMA foreign_keys = ON');
