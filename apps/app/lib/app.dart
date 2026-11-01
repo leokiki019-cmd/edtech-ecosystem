@@ -7,6 +7,7 @@ import 'package:edtech_app/screens/chat_screen.dart';
 import 'package:edtech_app/screens/courses_screen.dart';
 import 'package:edtech_app/screens/dashboard_screen.dart';
 import 'package:edtech_app/screens/integrity_screen.dart';
+import 'package:edtech_app/services/api_service.dart';
 import 'package:edtech_app/theme.dart';
 import 'package:edtech_app/widgets/bottom_nav.dart';
 import 'package:flutter/material.dart';
@@ -49,16 +50,22 @@ class _EdTechAppState extends State<EdTechApp> {
   );
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp.router(
-      routerConfig: _router,
-      title: 'EdTech Ecosystem',
-      debugShowCheckedModeBanner: false,
-      theme: appTheme,
-      builder: (context, child) => _PageTransitionHost(child: child ?? const SizedBox()),
-    );
+  void initState() {
+    super.initState();
+    final auth = context.read<AuthProvider>();
+    ApiService.instance.token = auth.token;
+    auth.addListener(_onAuthChanged);
   }
-}
+
+  void _onAuthChanged() {
+    ApiService.instance.token = context.read<AuthProvider>().token;
+  }
+
+  @override
+  void dispose() {
+    context.read<AuthProvider>().removeListener(_onAuthChanged);
+    super.dispose();
+  }
 
 /// Wraps routed pages in a soft fade + slide-up so switching between
 /// login / dashboard feels like it "pops in".

@@ -2,12 +2,15 @@ import cors from "@fastify/cors";
 import Fastify from "fastify";
 import type { FastifyError } from "fastify";
 import type { ApiError } from "@edtech/shared";
+import { authenticate } from "./middleware/auth";
 import { config } from "./config";
 import { initDb } from "./db";
 import { authRoutes } from "./routes/auth";
 import { classroomRoutes } from "./routes/classroom";
 import { courseRoutes } from "./routes/courses";
 import { telemetryRoutes } from "./routes/telemetry";
+
+const PUBLIC_PREFIXES = ["/health", "/api/v1/auth"];
 
 export async function buildApp() {
   await initDb();
@@ -19,6 +22,15 @@ export async function buildApp() {
   });
 
   await app.register(cors, { origin: config.corsOrigin });
+
+  // Enforce bearer-token authentication on every route except public ones.
+  app.addHook("preHandler", async (request, reply) => {
+    const url = request.routerPath ?? request.url;
+    if (PUBLIC_PREFIXES.some((prefix) => url.startsWith(prefix))) {
+      return;
+    }
+    await authenticate(request, reply);
+  });
 
   app.get("/health", async () => ({
     status: "ok",

@@ -9,7 +9,16 @@
     "page": "src/options.html",
     "open_in_tab": true
   },
-  "host_permissions": ["http://*/*", "https://*/*"],
+  "optional_host_permissions": [
+    "https://*.example.edu/*",
+    "https://*.school.edu/*",
+    "https://*.university.edu/*",
+    "https://canvas.*.edu/*",
+    "https://classroom.google.com/*"
+  ],
+  "host_permissions": [
+    "https://*/api/v1/*"
+  ],
   "background": {
     "service_worker": "src/background.js",
     "type": "module"

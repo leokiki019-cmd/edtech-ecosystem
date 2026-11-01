@@ -1,8 +1,10 @@
+import crypto from "node:crypto";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import type {
   ApiError,
   IntegrityReport,
   SignedTelemetryBatch,
+  TelemetryEvent,
 } from "@edtech/shared";
 import {
   createTelemetryBatch,
@@ -30,6 +32,60 @@ const fail = (
   message: string,
 ) => reply.code(statusCode).send({ error: { code, message } } satisfies ApiError);
 
+/** Reconstruct the exact canonical JSON the extension signs over. Key order
+ *  must match the client (batchId, studentId, assignmentId, createdAt, events). */
+function canonicalBatch(batch: SignedTelemetryBatch): string {
+  return JSON.stringify({
+    batchId: batch.batchId,
+    studentId: batch.studentId,
+    assignmentId: batch.assignmentId,
+    createdAt: batch.createdAt,
+    events: batch.events,
+  });
+}
+
+/** Verify an HMAC-SHA256 batch signature against the client's public JWK.
+ *  The extension generates a single HMAC key per install and exports it as both
+ *  "private" and "public" JWK (HMAC is symmetric). The clientPublicKey JWK
+ *  carries the raw key material in its `k` field (base64url). */
+function verifyBatchSignature(
+  batch: SignedTelemetryBatch,
+): { ok: boolean; reason?: string } {
+  let publicKey: { kty?: string; k?: string };
+  try {
+    publicKey = JSON.parse(batch.clientPublicKey);
+  } catch {
+    return { ok: false, reason: "invalid-client-public-key" };
+  }
+
+  if (!publicKey.k || publicKey.kty !== "oct") {
+    return { ok: false, reason: "invalid-hmac-jwk" };
+  }
+
+  let keyMaterial: Buffer;
+  try {
+    keyMaterial = Buffer.from(publicKey.k, "base64url");
+  } catch {
+    return { ok: false, reason: "invalid-key-material" };
+  }
+
+  const expected = crypto
+    .createHmac("sha256", keyMaterial)
+    .update(canonicalBatch(batch))
+    .digest("base64url");
+
+  const provided = Buffer.from(batch.clientSignature, "base64url");
+  const wanted = Buffer.from(expected, "base64url");
+  if (
+    provided.length !== wanted.length ||
+    !crypto.timingSafeEqual(provided, wanted)
+  ) {
+    return { ok: false, reason: "signature-mismatch" };
+  }
+
+  return { ok: true };
+}
+
 export async function telemetryRoutes(app: FastifyInstance) {
   app.post<{ Body: SignedTelemetryBatch }>(
     "/telemetry/batches",
@@ -51,6 +107,17 @@ export async function telemetryRoutes(app: FastifyInstance) {
           400,
           "INVALID_BATCH",
           "A signed batch with at least one telemetry event is required",
+        );
+      }
+
+      // ---- Signature verification (new hardening step) ----
+      const sigCheck = verifyBatchSignature(batch);
+      if (!sigCheck.ok) {
+        return fail(
+          reply,
+          401,
+          "INVALID_SIGNATURE",
+          `Telemetry batch signature invalid: ${sigCheck.reason}`,
         );
       }
 

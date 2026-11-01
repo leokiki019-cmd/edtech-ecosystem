@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck:
+    name: TypeScript typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci --workspace @edtech/api --workspace @edtech/shared
+      - run: npm run typecheck --workspaces --if-present
+
+  build-api:
+    name: Build API bundle
+    runs-on: ubuntu-latest
+    needs: typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci --workspace @edtech/api --workspace @edtech/shared
+      - run: npm run build:api
+
+  extension-checks:
+    name: Extension syntax + manifest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --check apps/extension/src/background.js
+      - run: node --check apps/extension/src/content.js
+      - run: node --check apps/extension/src/popup.js
+      - run: node --check apps/extension/src/options.js
+      - run: |
+          node -e "const m=require('./apps/extension/manifest.json'); console.log('manifest_version:', m.manifest_version)"
+
+  flutter-analyze:
+    name: Flutter analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get --directory apps/app
+      - run: flutter analyze --directory apps/app
+
+  flutter-test:
+    name: Flutter tests
+    runs-on: ubuntu-latest
+    needs: flutter-analyze
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get --directory apps/app
+      - run: flutter test --directory apps/app
+
+  rust-tests:
+    name: Rust tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - run: cargo test --manifest-path crates/telemetry-core/Cargo.toml
+      - run: cargo clippy --manifest-path crates/telemetry-core/Cargo.toml -- -D warnings
+      - run: cargo fmt --manifest-path crates/telemetry-core/Cargo.toml -- --check

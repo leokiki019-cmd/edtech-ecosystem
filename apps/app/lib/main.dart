@@ -3,10 +3,13 @@ import 'package:edtech_app/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final auth = AuthProvider();
+  await auth.init();
   runApp(
     ChangeNotifierProvider(
-      create: (_) => AuthProvider(),
+      create: (_) => auth,
       child: const EdTechApp(),
     ),
   );

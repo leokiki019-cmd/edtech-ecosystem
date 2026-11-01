@@ -4,11 +4,11 @@ import 'package:edtech_app/config.dart';
 import 'package:edtech_app/models/assignment.dart';
 import 'package:edtech_app/models/attachment.dart';
 import 'package:edtech_app/models/calendar_event.dart';
-import 'package:edtech_app/models/college.dart';
 import 'package:edtech_app/models/channel.dart';
 import 'package:edtech_app/models/chat_message.dart';
 import 'package:edtech_app/models/course.dart';
 import 'package:edtech_app/models/effort_report.dart';
+import 'package:edtech_app/models/effort_score.dart';
 import 'package:edtech_app/models/submission.dart';
 import 'package:http/http.dart' as http;
 
@@ -17,28 +17,26 @@ class ApiService {
   static final ApiService instance = ApiService._internal();
   factory ApiService() => instance;
 
+  /// Bearer token set by AuthProvider after login/signup/verify-sms/getMe.
+  /// Included on every authenticated request.
+  String? token;
+
   final http.Client _client = http.Client();
 
-  /// Live college profile (name + departments) from the API.
-  /// Falls back to the local CTTC demo copy when unreachable.
-  Future<College> getCollege() async {
-    try {
-      final response = await _client
-          .get(Uri.parse('${AppConfig.apiBaseUrl}/api/v1/college'))
-          .timeout(const Duration(seconds: 8));
-      _throwOnError(response);
-      final data = jsonDecode(response.body)['data'];
-      if (data == null) return College.demo;
-      return College.fromJson(data as Map<String, dynamic>);
-    } catch (_) {
-      return College.demo;
+  Map<String, String> _authHeaders() {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token!.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
     }
+    return headers;
   }
 
   Future<List<Course>> getCourses() async {
     try {
-      final response = await _client.get(Uri.parse('${AppConfig.apiBaseUrl}/api/v1/courses'))
-          .timeout(const Duration(seconds: 8));
+      final response = await _client.get(
+        Uri.parse('${AppConfig.apiBaseUrl}/api/v1/courses'),
+        headers: _authHeaders(),
+      ).timeout(const Duration(seconds: 8));
       _throwOnError(response);
       final List<dynamic> data = jsonDecode(response.body)['data'] as List<dynamic>;
       return data.map((item) => Course.fromJson(item as Map<String, dynamic>)).toList();
@@ -51,6 +49,7 @@ class ApiService {
     try {
       final response = await _client.get(
         Uri.parse('${AppConfig.apiBaseUrl}/api/v1/courses/$courseId/assignments'),
+        headers: _authHeaders(),
       ).timeout(const Duration(seconds: 8));
       _throwOnError(response);
       final List<dynamic> data = jsonDecode(response.body)['data'] as List<dynamic>;
@@ -64,6 +63,7 @@ class ApiService {
     try {
       final response = await _client.get(
         Uri.parse('${AppConfig.apiBaseUrl}/api/v1/assignments/$assignmentId'),
+        headers: _authHeaders(),
       ).timeout(const Duration(seconds: 8));
       _throwOnError(response);
       return Assignment.fromJson(jsonDecode(response.body)['data'] as Map<String, dynamic>);
@@ -76,6 +76,7 @@ class ApiService {
     try {
       final response = await _client.get(
         Uri.parse('${AppConfig.apiBaseUrl}/api/v1/assignments/$assignmentId/roster'),
+        headers: _authHeaders(),
       ).timeout(const Duration(seconds: 8));
       _throwOnError(response);
       return List<Map<String, dynamic>>.from(
@@ -97,7 +98,7 @@ class ApiService {
   }) async {
     final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/api/v1/assignments/$assignmentId/submissions'),
-      headers: <String, String>{'Content-Type': 'application/json'},
+      headers: _authHeaders(),
       body: jsonEncode(<String, dynamic>{
         'studentId': studentId,
         'attachments': attachments.map((item) => item.toJson()).toList(),
@@ -110,16 +111,13 @@ class ApiService {
   Future<Map<String, dynamic>> postTelemetry(Map<String, dynamic> batch) async {
     final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/api/v1/telemetry/batches'),
-      headers: <String, String>{'Content-Type': 'application/json'},
+      headers: _authHeaders(),
       body: jsonEncode(batch),
     );
     _throwOnError(response);
     return jsonDecode(response.body)['data'] as Map<String, dynamic>;
   }
 
-  /// Returns the latest integrity report, or null when the API has no
-  /// telemetry recorded yet for this student and assignment (404).
-  /// Throws on network errors or other API failures.
   Future<IntegrityReport?> getIntegrityReportOrNull(
     String assignmentId,
     String studentId,
@@ -128,6 +126,7 @@ class ApiService {
       Uri.parse(
         '${AppConfig.apiBaseUrl}/api/v1/integrity/$assignmentId/$studentId',
       ),
+      headers: _authHeaders(),
     ).timeout(const Duration(seconds: 8));
     if (response.statusCode == 404) {
       return null;
@@ -142,7 +141,7 @@ class ApiService {
     try {
       final uri = Uri.parse('${AppConfig.apiBaseUrl}/api/v1/calendar')
           .replace(queryParameters: userId == null ? null : <String, String>{'userId': userId});
-      final response = await _client.get(uri).timeout(const Duration(seconds: 8));
+      final response = await _client.get(uri, headers: _authHeaders()).timeout(const Duration(seconds: 8));
       _throwOnError(response);
       final List<dynamic> data = jsonDecode(response.body)['data'] as List<dynamic>;
       return data.map((item) => CalendarEvent.fromJson(item as Map<String, dynamic>)).toList();
@@ -155,6 +154,7 @@ class ApiService {
     try {
       final response = await _client.get(
         Uri.parse('${AppConfig.apiBaseUrl}/api/v1/channels/$channelId/messages'),
+        headers: _authHeaders(),
       ).timeout(const Duration(seconds: 8));
       _throwOnError(response);
       final List<dynamic> data = jsonDecode(response.body)['data'] as List<dynamic>;
@@ -174,7 +174,7 @@ class ApiService {
   }) async {
     final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/api/v1/channels/$channelId/messages'),
-      headers: <String, String>{'Content-Type': 'application/json'},
+      headers: _authHeaders(),
       body: jsonEncode(<String, String>{
         'authorId': authorId,
         'body': body,
@@ -188,6 +188,7 @@ class ApiService {
     try {
       final response = await _client.get(
         Uri.parse('${AppConfig.apiBaseUrl}/api/v1/courses/$courseId/channels'),
+        headers: _authHeaders(),
       ).timeout(const Duration(seconds: 8));
       _throwOnError(response);
       final List<dynamic> data = jsonDecode(response.body)['data'] as List<dynamic>;
@@ -209,7 +210,7 @@ class ApiService {
   }) async {
     final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/api/v1/auth/register'),
-      headers: <String, String>{'Content-Type': 'application/json'},
+      headers: _authHeaders(),
       body: jsonEncode(<String, dynamic>{
         'phone': phone,
         'email': email,
@@ -228,7 +229,7 @@ class ApiService {
   }) async {
     final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/api/v1/auth/login'),
-      headers: <String, String>{'Content-Type': 'application/json'},
+      headers: _authHeaders(),
       body: jsonEncode(<String, dynamic>{
         'phone': phone,
         'password': password,
@@ -243,7 +244,7 @@ class ApiService {
   }) async {
     final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/api/v1/auth/send-sms'),
-      headers: <String, String>{'Content-Type': 'application/json'},
+      headers: _authHeaders(),
       body: jsonEncode(<String, dynamic>{
         'phone': phone,
       }),
@@ -258,7 +259,7 @@ class ApiService {
   }) async {
     final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/api/v1/auth/verify-sms'),
-      headers: <String, String>{'Content-Type': 'application/json'},
+      headers: _authHeaders(),
       body: jsonEncode(<String, dynamic>{
         'phone': phone,
         'code': code,
@@ -273,7 +274,7 @@ class ApiService {
   }) async {
     final response = await _client.get(
       Uri.parse('${AppConfig.apiBaseUrl}/api/v1/auth/me'),
-      headers: <String, String>{
+      headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },

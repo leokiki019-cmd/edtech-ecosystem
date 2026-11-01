@@ -10,6 +10,8 @@ if (!existsSync(dataDir)) {
 export const db = new Database(join(dataDir, "edtech.sqlite"));
 db.pragma("foreign_keys = ON");
 
+const SCHEMA_VERSION = 1;
+
 // The departments table changed shape (duration_years -> category +
 // duration_months for the flyer's 6-month panels). CREATE TABLE IF NOT EXISTS
 // cannot alter an existing table, so drop the legacy shape and let the schema
@@ -22,6 +24,47 @@ function migrateDepartmentsTable() {
   const names = new Set(columns.map((c) => c.name));
   if (!names.has("category") || !names.has("duration_months")) {
     db.exec("DROP TABLE departments");
+  }
+}
+
+/* ---------- schema versioning ---------- */
+
+function ensureSchemaVersionTable() {
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS schema_version (
+      version INTEGER PRIMARY KEY,
+      applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
+  ).run();
+}
+
+function getSchemaVersion(): number {
+  const row = db
+    .prepare('SELECT version FROM schema_version ORDER BY version DESC LIMIT 1')
+    .get() as { version: number } | undefined;
+  return row?.version ?? 0;
+}
+
+function setSchemaVersion(version: number) {
+  db.prepare(
+    `INSERT INTO schema_version (version, applied_at) VALUES (?, datetime('now'))`,
+  ).run(version);
+}
+
+/* Migration 0 → 1: baseline (all tables already exist via schema.sql).
+ * Future migrations go here as the schema evolves. */
+function migrateToV1() {
+  // No-op: schema.sql already creates all tables with IF NOT EXISTS.
+  // This migration exists to record that the baseline schema is applied.
+}
+
+function runMigrations() {
+  ensureSchemaVersionTable();
+  const current = getSchemaVersion();
+
+  if (current < 1) {
+    migrateToV1();
+    setSchemaVersion(1);
   }
 }
 
@@ -41,4 +84,6 @@ export function initDb() {
     const seed = readFileSync(join(process.cwd(), "db", "seed.sql"), "utf-8");
     db.exec(seed);
   }
+
+  runMigrations();
 }
