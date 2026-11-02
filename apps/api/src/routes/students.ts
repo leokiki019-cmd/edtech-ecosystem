@@ -156,55 +156,6 @@ const studentsRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // GET /api/v1/students/:id/departments - get departments for a student
-  fastify.get(
-    '/students/:id/departments',
-    { preHandler: [authenticate] },
-    async (request, reply) => {
-      const req = request as AuthRequest;
-      const departments = getDepartmentsByStudent((req.params as { id: string }).id);
-      return reply.send({ data: departments });
-    }
-  );
-
-  // POST /api/v1/students/:id/departments - enroll student in department
-  fastify.post(
-    '/students/:id/departments',
-    { preHandler: [authenticate] },
-    async (request, reply) => {
-      const req = request as AuthRequest;
-      const caller = req.user;
-      if (caller?.role !== 'admin') {
-        return reply.code(403).send({ error: { code: 'FORBIDDEN', message: 'Admin only' } });
-      }
-      const body = request.body as { departmentId: string };
-      const enrollment = enrollStudentInDepartment({
-        studentId: (req.params as { id: string }).id,
-        departmentId: body.departmentId,
-        enrolledBy: caller?.id ?? (req.params as { id: string }).id,
-      });
-      return reply.code(201).send({ data: enrollment });
-    }
-  );
-
-  // DELETE /api/v1/students/:id/departments/:departmentId - unenroll
-  fastify.delete(
-    '/students/:id/departments/:departmentId',
-    { preHandler: [authenticate] },
-    async (request, reply) => {
-      const req = request as AuthRequest;
-      const caller = req.user;
-      if (caller?.role !== 'admin') {
-        return reply.code(403).send({ error: { code: 'FORBIDDEN', message: 'Admin only' } });
-      }
-      unenrollStudentFromDepartment(
-        (req.params as { id: string }).id,
-        (req.params as { departmentId: string }).departmentId
-      );
-      return reply.send({ data: { success: true } });
-    }
-  );
-
   // GET /api/v1/courses/:courseId/students - get students in a course
   fastify.get(
     '/courses/:courseId/students',

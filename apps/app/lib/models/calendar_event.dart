@@ -6,10 +6,12 @@ class CalendarEvent {
     required this.kind,
     required this.startsAt,
     required this.endsAt,
+    this.departmentId,
   });
 
   final String id;
   final String? courseId;
+  final String? departmentId;
   final String title;
   final String kind;
   final DateTime startsAt;
@@ -19,6 +21,7 @@ class CalendarEvent {
     return CalendarEvent(
       id: json['id'] as String,
       courseId: json['courseId'] as String?,
+      departmentId: json['departmentId'] as String?,
       title: json['title'] as String,
       kind: json['kind'] as String,
       startsAt: DateTime.tryParse(json['startsAt'] as String? ?? '') ?? DateTime.now(),
@@ -32,6 +35,7 @@ class CalendarEvent {
     return <String, dynamic>{
       'id': id,
       'courseId': courseId,
+      'departmentId': departmentId,
       'title': title,
       'kind': kind,
       'startsAt': startsAt.toIso8601String(),

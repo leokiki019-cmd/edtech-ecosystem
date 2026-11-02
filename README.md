@@ -13,7 +13,7 @@ A converted Word copy is available at [`Project_Proposal.docx`](./Project_Propos
 | --- | --- |
 | API (`apps/api`) | Working Fastify + TypeScript service on SQLite with auth (scrypt passwords, HMAC-signed tokens, SMS verification codes) |
 | Browser extension (`apps/extension`) | Manifest v0.2.0: consent-gated telemetry, signed batch upload to the API, options page with account login, retry queue |
-| Flutter app (`apps/app`) | Wired to the API: login / signup / SMS verification, auth-gated routing, live courses, calendar, chat, integrity screens |
+| Flutter app (`apps/app`) | Login / signup / SMS verification, auth-gated routing, live courses, calendar, chat, integrity screens; also builds as a standalone offline Android APK with admin calendar editing, students, departments, attendance, notes and Excel import/export |
 | Rust core (`crates/telemetry-core`) | Event model, effort scoring, integrity flags, and unit tests; not yet compiled in this environment |
 
 The API has been typechecked, built, and smoke-tested end to end (auth flow
@@ -108,6 +108,29 @@ Cross-platform client with a five-tab shell and full auth flow:
 
 The API base URL defaults to `http://localhost:4000` and can be overridden at
 build time with `--dart-define=API_BASE_URL=https://your-api.example.com`.
+
+#### Standalone Android APK (offline mode)
+
+The app can run without any hosted or local backend. In offline mode every API
+route is answered in-process by `OfflineClient` and persisted on the device with
+`shared_preferences` via `OfflineStore`. The default is offline mode:
+
+```bash
+cd apps/app
+flutter build apk --release --dart-define=OFFLINE_MODE=true
+```
+
+The APK is written to `apps/app/build/app/outputs/flutter-apk/app-release.apk`.
+In offline mode any phone/password signs in to the demo admin account, and all
+data (students, department enrollments, attendance, notes, assignments,
+submissions, chat and calendar events) survives app restarts.
+
+Admins can add, edit and delete calendar events from the Calendar tab. The
+department dropdown filters the calendar per department, and choosing a
+department in the event editor scopes the event to that department.
+
+To point a build back at the Fastify API instead, use
+`--dart-define=OFFLINE_MODE=false --dart-define=API_BASE_URL=https://your-api.example.com`.
 
 ### 4. Shared types (`packages/shared`)
 

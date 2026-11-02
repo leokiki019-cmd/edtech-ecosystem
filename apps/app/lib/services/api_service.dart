@@ -11,6 +11,7 @@ import 'package:edtech_app/models/college.dart';
 import 'package:edtech_app/models/course.dart';
 import 'package:edtech_app/models/effort_report.dart';
 import 'package:edtech_app/models/submission.dart';
+import 'package:edtech_app/services/offline_client.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
@@ -22,7 +23,8 @@ class ApiService {
   /// Included on every authenticated request.
   String? token;
 
-  final http.Client _client = http.Client();
+  final http.Client _client =
+      AppConfig.offlineMode ? OfflineClient() : http.Client();
 
   Map<String, String> _authHeaders() {
     final headers = <String, String>{'Content-Type': 'application/json'};
@@ -244,7 +246,7 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> getStudentsByCourse(String courseId) async {
     final response = await _client.get(
-      Uri.parse('${AppConfig.apiBaseUrl}/api/v1/students/courses/$courseId/students'),
+      Uri.parse('${AppConfig.apiBaseUrl}/api/v1/courses/$courseId/students'),
       headers: _authHeaders(),
     ).timeout(const Duration(seconds: 8));
     _throwOnError(response);
@@ -491,10 +493,16 @@ class ApiService {
     );
   }
 
-  Future<List<CalendarEvent>> getCalendar(String? userId) async {
+  Future<List<CalendarEvent>> getCalendar(
+    String? userId, {
+    String? departmentId,
+  }) async {
     try {
+      final query = <String, String>{};
+      if (userId != null) query['userId'] = userId;
+      if (departmentId != null) query['departmentId'] = departmentId;
       final uri = Uri.parse('${AppConfig.apiBaseUrl}/api/v1/calendar')
-          .replace(queryParameters: userId == null ? null : <String, String>{'userId': userId});
+          .replace(queryParameters: query.isEmpty ? null : query);
       final response = await _client.get(uri, headers: _authHeaders()).timeout(const Duration(seconds: 8));
       _throwOnError(response);
       final List<dynamic> data = jsonDecode(response.body)['data'] as List<dynamic>;
@@ -502,6 +510,67 @@ class ApiService {
     } catch (_) {
       return _demoCalendar;
     }
+  }
+
+  Future<CalendarEvent> createCalendarEvent({
+    required String title,
+    required String kind,
+    required DateTime startsAt,
+    DateTime? endsAt,
+    String? departmentId,
+    String? courseId,
+  }) async {
+    final response = await _client.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/api/v1/calendar'),
+      headers: _authHeaders(),
+      body: jsonEncode(<String, dynamic>{
+        'title': title,
+        'kind': kind,
+        'startsAt': startsAt.toIso8601String(),
+        'endsAt': endsAt?.toIso8601String(),
+        'departmentId': departmentId,
+        'courseId': courseId,
+      }),
+    );
+    _throwOnError(response);
+    return CalendarEvent.fromJson(
+      jsonDecode(response.body)['data'] as Map<String, dynamic>,
+    );
+  }
+
+  Future<CalendarEvent> updateCalendarEvent({
+    required String id,
+    required String title,
+    required String kind,
+    required DateTime startsAt,
+    DateTime? endsAt,
+    String? departmentId,
+    String? courseId,
+  }) async {
+    final response = await _client.put(
+      Uri.parse('${AppConfig.apiBaseUrl}/api/v1/calendar/$id'),
+      headers: _authHeaders(),
+      body: jsonEncode(<String, dynamic>{
+        'title': title,
+        'kind': kind,
+        'startsAt': startsAt.toIso8601String(),
+        'endsAt': endsAt?.toIso8601String(),
+        'departmentId': departmentId,
+        'courseId': courseId,
+      }),
+    );
+    _throwOnError(response);
+    return CalendarEvent.fromJson(
+      jsonDecode(response.body)['data'] as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> deleteCalendarEvent(String id) async {
+    final response = await _client.delete(
+      Uri.parse('${AppConfig.apiBaseUrl}/api/v1/calendar/$id'),
+      headers: _authHeaders(),
+    );
+    _throwOnError(response);
   }
 
   Future<List<ChatMessage>> getMessages(String channelId) async {

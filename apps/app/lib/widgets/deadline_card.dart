@@ -6,8 +6,9 @@ import 'package:flutter/material.dart';
 /// friendly "in X days" pill. Springy on press.
 class DeadlineCard extends StatefulWidget {
   final CalendarEvent event;
+  final VoidCallback? onTap;
 
-  const DeadlineCard({super.key, required this.event});
+  const DeadlineCard({super.key, required this.event, this.onTap});
 
   @override
   State<DeadlineCard> createState() => _DeadlineCardState();
@@ -39,6 +40,7 @@ class _DeadlineCardState extends State<DeadlineCard>
     final relative = _relative(widget.event.startsAt);
 
     return GestureDetector(
+      onTap: widget.onTap,
       onTapDown: (_) => _press(),
       onTapUp: (_) => _release(),
       onTapCancel: _release,
