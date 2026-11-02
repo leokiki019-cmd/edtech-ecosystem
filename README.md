@@ -121,6 +121,11 @@ flutter build apk --release --dart-define=OFFLINE_MODE=true
 ```
 
 The APK is written to `apps/app/build/app/outputs/flutter-apk/app-release.apk`.
+
+`shared_preferences_android` is pinned to `2.4.28` in `pubspec.yaml`. Newer
+2.5.x releases add a `package:jni` native build that requires the Android NDK
+and CMake; the pinned release keeps the Android build free of native code.
+
 In offline mode any phone/password signs in to the demo admin account, and all
 data (students, department enrollments, attendance, notes, assignments,
 submissions, chat and calendar events) survives app restarts.

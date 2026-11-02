@@ -7,7 +7,8 @@ plugins {
 android {
     namespace = "com.edtech.edtech_app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // No NDK is required: this app has no native code or native plugins.
+    // Leaving ndkVersion unset avoids Gradle auto-downloading a multi-GB NDK.
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -34,6 +35,15 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+
+    packaging {
+        jniLibs {
+            // Compress the engine libraries in the APK. Without the NDK, AGP cannot
+            // strip them, so they are large; compression keeps the APK shareable.
+            // Android extracts them on install (extractNativeLibs=true).
+            useLegacyPackaging = true
         }
     }
 }

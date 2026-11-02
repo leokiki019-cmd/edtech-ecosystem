@@ -20,5 +20,10 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^4.0.0
 
+dependency_overrides:
+  # 2.5.x adds package:jni, which builds native code and requires the Android NDK.
+  # 2.4.28 is the last pure-Kotlin implementation, so the APK needs no NDK.
+  shared_preferences_android: 2.4.28
+
 flutter:
   uses-material-design: true
