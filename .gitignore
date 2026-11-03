@@ -38,3 +38,4 @@ Desktop.ini
 .agents/
 
 .vercel
+.env*

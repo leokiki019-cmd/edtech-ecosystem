@@ -1,4 +1,13 @@
 {
-  "framework": "none",
-  "outputDirectory": "build/web"
+  "version": 2,
+  "installCommand": "npm install",
+  "buildCommand": "",
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api/index" }
+  ]
 }
