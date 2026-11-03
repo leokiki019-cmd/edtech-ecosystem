@@ -295,3 +295,46 @@ in-browser login click-through was not automated.
    target.
 8. Implement Google Sheets/Excel sync, teacher nudges, and the AI assistant.
 9. Add automated API route tests, extension scoring tests, and CI.
+
+## 9. Session 3 (2026-11-03): Vercel-compatible API without SQLite
+
+The API originally opened a SQLite file at startup. That path did not work on
+Vercel: the native module was unavailable in the function runtime, the data
+directory was read-only/ephemeral, and a root-level catch-all function cannot be
+used because Next.js-style `[...path]` filenames are not supported by plain
+Vercel Functions.
+
+Changes:
+
+1. Replaced the SQLite layer with a seeded in-memory store in
+   `apps/api/src/store/db.ts`. `initDb()` seeds users, courses, assignments,
+   submissions, calendar events, channels, messages, the college, 18
+   departments, attendance, notes, and enrollments once per process.
+2. Removed `better-sqlite3`, `sql.js`, their type packages, `apps/api/src/db.ts`,
+   and the old `apps/api/api/index.ts` adapter. `apps/api` now depends only on
+   Fastify and `@fastify/cors`, so it installs and builds standalone.
+3. Kept all store return values in camelCase (`durationMonths`, `startsAt`,
+   `collegeId`, ...) to match the Flutter models and existing routes.
+4. `authenticate()` now populates both `request.userId` and `request.user`, so
+   teacher/admin role checks work on the classroom and department routes.
+5. Added calendar create/update/delete and department filtering to the
+   classroom routes, plus department CRUD against the in-memory store.
+6. Added public `/`, `/api`, `/health`, and `/api/health` responses; all other
+   routes require a bearer token.
+7. Removed the root `vercel.json` and root `api/` fallback. The supported
+   deployment is a Vercel project whose Root Directory is `apps/api`; Vercel
+   detects `apps/api/src/index.ts` as the Fastify entrypoint with no build or
+   output configuration. The builder was renamed from `src/app.ts` to
+   `src/create-app.ts` so the only detected entrypoint is `src/index.ts`.
+8. Documented the Vercel steps in `README.md` and added `AUTH_SECRET` to
+   `apps/api/.env.example`.
+
+Verified locally: typecheck, tsup build, a clean standalone install/build of
+`apps/api`, login for all three demo roles, `/auth/me`, courses, college,
+departments, students, calendar, notes, attendance, channels, roster,
+submissions, department/calendar/note/student CRUD, and signed telemetry
+(`202`, effort score `45`).
+
+**Storage caveat:** the in-memory store is re-seeded on every cold start and is
+not shared between function instances. Production persistence requires an
+external database such as Postgres or Turso/libSQL.

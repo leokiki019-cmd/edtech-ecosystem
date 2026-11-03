@@ -11,7 +11,7 @@ A converted Word copy is available at [`Project_Proposal.docx`](./Project_Propos
 
 | Area | Status |
 | --- | --- |
-| API (`apps/api`) | Working Fastify + TypeScript service on SQLite with auth (scrypt passwords, HMAC-signed tokens, SMS verification codes) |
+| API (`apps/api`) | Working Fastify 5 + TypeScript service with a seeded in-memory store; auth uses scrypt passwords, HMAC-signed tokens, and SMS verification codes |
 | Browser extension (`apps/extension`) | Manifest v0.2.0: consent-gated telemetry, signed batch upload to the API, options page with account login, retry queue |
 | Flutter app (`apps/app`) | Login / signup / SMS verification, auth-gated routing, live courses, calendar, chat, integrity screens; also builds as a standalone offline Android APK with admin calendar editing, students, departments, attendance, notes and Excel import/export |
 | Rust core (`crates/telemetry-core`) | Event model, effort scoring, integrity flags, and unit tests; not yet compiled in this environment |
@@ -44,22 +44,23 @@ process-based integrity pipeline:
 - Course, assignment, submission, roster, calendar, and chat endpoints.
 - Signed telemetry batch ingestion.
 - Effort score calculation and integrity flag generation.
-- In-memory store seeded with one course, five users, four assignments, three
-  submissions, five calendar events, two chat channels, and two messages.
+- In-memory store seeded with one course, five users, 18 departments,
+  four assignments, three submissions, five calendar events, two chat
+  channels, two messages, attendance records, and teacher notes.
 
 Source layout:
 
 ```
 apps/api/src
-├── app.ts                  Fastify instance, CORS, error handling
+├── create-app.ts           Fastify instance, CORS, error handling
 ├── config.ts               Environment configuration
-├── index.ts                Server bootstrap
-├── routes/
-│   ├── classroom.ts        Calendar, channels, messages
-│   ├── courses.ts          Courses, assignments, submissions
-│   └── telemetry.ts        Telemetry ingestion and integrity reports
+├── index.ts                Server bootstrap (Vercel entrypoint)
+├── routes/                 Auth, courses, classroom, students, departments,
+│                           attendance, notes, Excel, and telemetry routes
 ├── services/effort.ts      Effort metrics, score, and flags
-└── store/memory.ts         Seed data and in-memory state
+└── store/
+    ├── db.ts               Seeded in-memory data layer and CRUD helpers
+    └── memory.ts           Demo seed data
 ```
 
 ### 2. Browser extension (`apps/extension`)
@@ -128,7 +129,8 @@ and CMake; the pinned release keeps the Android build free of native code.
 
 In offline mode any phone/password signs in to the demo admin account, and all
 data (students, department enrollments, attendance, notes, assignments,
-submissions, chat and calendar events) survives app restarts.
+submissions, chat and calendar events) survives app restarts. The offline build
+makes no network calls, so it does not need Vercel or a local API.
 
 Admins can add, edit and delete calendar events from the Calendar tab. The
 department dropdown filters the calendar per department, and choosing a
@@ -215,8 +217,58 @@ Environment variables are documented in `apps/api/.env.example`:
 | `CORS_ORIGIN` | `*` | Allowed CORS origin |
 | `AUTH_SECRET` | dev-only fallback | HMAC key for bearer tokens; **set this in production** |
 
-The database is a single SQLite file at `apps/api/data/edtech.sqlite`, created
-and seeded automatically on first run (delete the file to re-seed).
+The API keeps its data in an in-memory store seeded from
+`apps/api/src/store/memory.ts` on every cold start. No database file or native
+module is required. Restarting the process resets all writes, including
+registrations, attendance, notes, calendar edits, and chat messages.
+
+### Deploy the API to Vercel
+
+Vercel supports Fastify with zero configuration. Deploy `apps/api` as its own
+project so Vercel detects `apps/api/src/index.ts` as the function entry point:
+
+1. Push this repository to GitHub.
+2. In Vercel, choose **Add New → Project** and import the repository.
+3. Set **Root Directory** to `apps/api`.
+4. Leave **Framework Preset** (Fastify), **Build Command**, **Output
+   Directory**, and **Install Command** at their defaults.
+5. Add these environment variables:
+   - `AUTH_SECRET` — a long random value (for example from
+     `openssl rand -hex 32`); required in production.
+   - `CORS_ORIGIN` — `*` for a demo, or the exact web app origin.
+   - `NODE_ENV` — `production`.
+6. Deploy. Vercel routes every request to the single Fastify function.
+
+CLI alternative:
+
+```powershell
+cd apps/api
+npx vercel link
+npx vercel env add AUTH_SECRET production
+npx vercel env add CORS_ORIGIN production
+npx vercel --prod
+```
+
+Test the deployment:
+
+```powershell
+$api = "https://your-project.vercel.app"
+Invoke-RestMethod "$api/health"
+
+$body = @{ email = "maya.chen@example.edu"; password = "password123" } |
+  ConvertTo-Json
+Invoke-RestMethod "$api/api/v1/auth/login" -Method Post `
+  -ContentType "application/json" -Body $body
+```
+
+> **Vercel storage is ephemeral.** The store is re-seeded on each cold start and
+> is not shared between function instances. Use an external database such as
+> Postgres or Turso/libSQL if production data must persist.
+
+The repository root is not a deployable Vercel project. Always set the project's
+Root Directory to `apps/api` (or run the CLI from that folder). If an existing
+Vercel project is linked to the repository root, change its Root Directory under
+**Settings → General** before redeploying.
 
 ### Load the extension
 
@@ -264,7 +316,8 @@ Run this from the repository root so Cargo uses the workspace.
 
 ## API reference
 
-Base path: `/api/v1` (except `/health`).
+Base path: `/api/v1` (except `/health`). Every route except `/health` and
+`/api/v1/auth/*` requires `Authorization: Bearer <token>`.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -286,6 +339,28 @@ Base path: `/api/v1` (except `/health`).
 | GET | `/courses/:courseId/channels` | Chat channels for a course |
 | GET | `/channels/:channelId/messages` | Messages in a channel |
 | POST | `/channels/:channelId/messages` | Post a message (students cannot post in announcement channels) |
+| GET | `/college` | College profile and departments |
+| GET | `/departments` | List departments |
+| POST | `/departments` | Create a department (admin only) |
+| PUT | `/departments/:id` | Update a department (admin only) |
+| DELETE | `/departments/:id` | Delete a department (admin only) |
+| GET | `/departments/:id/students` | Students enrolled in a department |
+| GET | `/students` | List students |
+| POST | `/students` | Create a student |
+| GET / PUT / DELETE | `/students/:id` | Read, update, or delete a student |
+| GET | `/courses/:courseId/students` | Students enrolled in a course |
+| GET / POST | `/students/:studentId/departments` | List or enroll department memberships |
+| DELETE | `/students/:studentId/departments/:departmentId` | Remove a department membership |
+| GET / POST | `/attendance` | List or mark attendance |
+| POST | `/attendance/bulk` | Mark attendance for several students |
+| GET | `/attendance/course/:courseId/students` | Attendance roster for a date |
+| GET / POST | `/notes` | List or create teacher notes |
+| GET / PUT / DELETE | `/notes/:id` | Read, update, or delete a teacher note |
+| POST | `/excel/import/students` | Import students from parsed Excel rows |
+| GET | `/excel/export/students` | Export students as Excel-compatible JSON |
+| GET | `/excel/export/attendance` | Export attendance as Excel-compatible JSON |
+| GET | `/excel/export/notes` | Export notes as Excel-compatible JSON |
+| POST / PUT / DELETE | `/calendar` and `/calendar/:eventId` | Create, update, or delete calendar events (admin or teacher) |
 
 ### Submit a submission
 
@@ -312,8 +387,8 @@ Content-Type: application/json
   "batchId": "batch-demo-1",
   "studentId": "u-student-1",
   "assignmentId": "a-001",
-  "clientSignature": "demo-signature",
-  "clientPublicKey": "demo-public-key",
+  "clientSignature": "<base64url HMAC-SHA256 over the canonical batch>",
+  "clientPublicKey": "{\"kty\":\"oct\",\"k\":\"<base64url key>\"}",
   "createdAt": "2026-10-19T10:00:00Z",
   "events": [
     {
@@ -341,8 +416,10 @@ Content-Type: application/json
 The response includes the accepted event count and computed effort score. This
 sample returns a score of `45` and the `large_paste` flag.
 
-The signature and public-key fields are required but are **not yet
-cryptographically verified**. That is a planned hardening step.
+The API recomputes the HMAC-SHA256 over `{batchId, studentId, assignmentId,
+createdAt, events}` and rejects mismatched signatures with `401`. The extension
+generates a per-install key and signs each batch automatically, so a literal
+placeholder signature will be rejected.
 
 ## Effort scoring
 
@@ -385,6 +462,8 @@ five seconds to avoid counting long idle periods.
 | `npm run typecheck` | Passed for `@edtech/api` and `@edtech/shared` |
 | `npm run build:api` | Passed; ESM bundle generated in `apps/api/dist` |
 | API smoke test | All endpoints verified, including the full auth flow: seeded login (`password123`), wrong-password 401, register, signed-token `/me`, forged-token 401, SMS send/verify/reuse-rejection, telemetry ingest (score 45, `large_paste`), integrity report, ISO-8601 dates |
+| Standalone API install/build | Passed from a clean copy of `apps/api` with only Fastify and CORS; no SQLite or native modules |
+| Vercel route smoke test (local) | `/`, `/health`, `/api/health`, login, courses, departments, calendar CRUD, attendance, notes, student CRUD, and signed telemetry all returned the expected status codes |
 | Extension syntax | `node --check` passed for background, content, popup, and options scripts |
 | Manifest | Valid Manifest V3 JSON with `options_ui` |
 | `flutter analyze` | No errors and no warnings from new code |
@@ -398,10 +477,11 @@ chronological record of setup and verification.
 
 ## Known limitations and next steps
 
-1. Verify telemetry signatures server-side (the batches are HMAC-signed by the
-   extension, but the API does not verify them yet) and move to asymmetric keys.
-2. Enforce bearer-token authorization on the classroom/telemetry routes (tokens
-   are issued and verified for `/auth/me`, but other routes are still open).
+1. Move telemetry signing from the shared HMAC JWK to asymmetric keys so the
+   client cannot derive the verification key.
+2. Tighten per-resource authorization: bearer tokens are enforced on every
+   non-public route, but course and telemetry reads are not yet scoped to the
+   caller's enrollments.
 3. Build the Rust core for FFI and WASM, then integrate it with Flutter via
    `flutter_rust_bridge`.
 4. Persist per-assignment telemetry streams to support time-lapse writing replay.

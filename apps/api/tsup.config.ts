@@ -6,6 +6,4 @@ export default defineConfig({
   target: "node20",
   clean: true,
   sourcemap: true,
-  external: ["better-sqlite3"],
-  noExternal: ["@edtech/shared"],
 });

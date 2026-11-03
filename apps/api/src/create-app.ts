@@ -3,7 +3,7 @@ import Fastify from "fastify";
 import type { FastifyError } from "fastify";
 import { authenticate } from "./middleware/auth";
 import { config } from "./config";
-import { initDb } from "./db";
+import { initDb } from "./store/db";
 
 interface ApiError {
   error: { code: string; message: string };
@@ -18,7 +18,12 @@ import attendanceRoutes from "./routes/attendance";
 import notesRoutes from "./routes/notes";
 import excelRoutes from "./routes/excel";
 
-const PUBLIC_PREFIXES = ["/health", "/api/v1/auth"];
+const PUBLIC_PREFIXES = [
+  "/health",
+  "/api/health",
+  "/api/v1/auth",
+];
+const PUBLIC_PATHS = new Set(["/", "/api"]);
 
 export async function buildApp() {
   await initDb();
@@ -35,18 +40,34 @@ export async function buildApp() {
   app.addHook("preHandler", async (request, reply) => {
     // Fastify v5 renamed routerPath -> routeOptions.url.
     const url = request.routeOptions?.url ?? request.url;
-    if (PUBLIC_PREFIXES.some((prefix) => url.startsWith(prefix))) {
+    if (
+      PUBLIC_PATHS.has(url) ||
+      PUBLIC_PREFIXES.some((prefix) => url.startsWith(prefix))
+    ) {
       return;
     }
     await authenticate(request, reply);
   });
 
-  app.get("/health", async () => ({
+  // Friendly landing responses for the service root and API base.
+  const rootHandler = async () => ({
+    status: "ok",
+    service: "edtech-api",
+    version: "0.1.0",
+    health: "/health",
+    api: "/api/v1",
+  });
+  app.get("/", rootHandler);
+  app.get("/api", rootHandler);
+
+  const healthHandler = async () => ({
     status: "ok",
     service: "edtech-api",
     version: "0.1.0",
     timestamp: new Date().toISOString(),
-  }));
+  });
+  app.get("/health", healthHandler);
+  app.get("/api/health", healthHandler);
 
   await app.register(courseRoutes, { prefix: "/api/v1" });
   await app.register(telemetryRoutes, { prefix: "/api/v1" });

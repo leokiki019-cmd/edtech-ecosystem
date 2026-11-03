@@ -23,8 +23,8 @@ const fail = (
 ) => reply.code(statusCode).send({ error: { code, message } } satisfies ApiError);
 
 export async function courseRoutes(app: FastifyInstance) {
-  // Live college profile: name + departments served from SQLite so the app
-  // always reflects the current database state.
+  // Live college profile: name + departments served from the in-memory store
+  // so the app always reflects the current data.
   app.get("/college", async () => {
     const college = getColleges()[0];
     if (!college) {

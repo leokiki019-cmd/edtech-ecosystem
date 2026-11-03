@@ -1,11 +1,15 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import {
-  getDepartments,
-  getStudentsByDepartment,
-  getDepartmentsByStudent,
+  createDepartment,
+  deleteDepartment,
   enrollStudentInDepartment,
+  getDepartments,
+  getDepartmentsByStudent,
+  getStudentsByDepartment,
   unenrollStudentFromDepartment,
+  updateDepartment,
 } from '../store/db.js';
+import type { DepartmentCategory } from '../store/db.js';
 import { authenticate } from '../middleware/auth.js';
 
 type AuthRequest = FastifyRequest & { user?: { id: string; role?: string } };
@@ -43,21 +47,20 @@ const departmentsRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.code(403).send({ error: { code: 'FORBIDDEN', message: 'Admin only' } });
       }
       const body = request.body as {
-        collegeId: string;
+        collegeId?: string;
         name: string;
         code: string;
-        category: string;
+        category: DepartmentCategory;
         durationMonths: number;
       };
-      const { randomUUID } = await import('node:crypto');
-      const { db } = await import('../db.js');
-      const id = randomUUID();
-      const now = new Date().toISOString();
-      db.prepare(
-        `INSERT INTO departments (id, college_id, name, code, category, duration_months, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
-      ).run(id, body.collegeId, body.name, body.code, body.category, body.durationMonths, now);
-      return reply.code(201).send({ data: { id, ...body, createdAt: now } });
+      const department = createDepartment({
+        collegeId: body.collegeId ?? 'col-cttc',
+        name: body.name,
+        code: body.code,
+        category: body.category,
+        durationMonths: body.durationMonths,
+      });
+      return reply.code(201).send({ data: department });
     }
   );
 
@@ -74,19 +77,19 @@ const departmentsRoutes: FastifyPluginAsync = async (fastify) => {
       const body = request.body as Partial<{
         name: string;
         code: string;
-        category: string;
+        category: DepartmentCategory;
         durationMonths: number;
       }>;
-      const { db } = await import('../db.js');
-      const sets: string[] = [];
-      const params: any[] = [];
-      if (body.name !== undefined) { sets.push('name = ?'); params.push(body.name); }
-      if (body.code !== undefined) { sets.push('code = ?'); params.push(body.code); }
-      if (body.category !== undefined) { sets.push('category = ?'); params.push(body.category); }
-      if (body.durationMonths !== undefined) { sets.push('duration_months = ?'); params.push(body.durationMonths); }
-      params.push((req.params as { id: string }).id);
-      db.prepare(`UPDATE departments SET ${sets.join(', ')} WHERE id = ?`).run(...params);
-      return reply.send({ data: { success: true } });
+      const department = updateDepartment(
+        (req.params as { id: string }).id,
+        body,
+      );
+      if (!department) {
+        return reply.code(404).send({
+          error: { code: 'NOT_FOUND', message: 'Department not found' },
+        });
+      }
+      return reply.send({ data: department });
     }
   );
 
@@ -100,8 +103,12 @@ const departmentsRoutes: FastifyPluginAsync = async (fastify) => {
       if (caller?.role !== 'admin') {
         return reply.code(403).send({ error: { code: 'FORBIDDEN', message: 'Admin only' } });
       }
-      const { db } = await import('../db.js');
-      db.prepare('DELETE FROM departments WHERE id = ?').run((req.params as { id: string }).id);
+      const removed = deleteDepartment((req.params as { id: string }).id);
+      if (!removed) {
+        return reply.code(404).send({
+          error: { code: 'NOT_FOUND', message: 'Department not found' },
+        });
+      }
       return reply.send({ data: { success: true } });
     }
   );

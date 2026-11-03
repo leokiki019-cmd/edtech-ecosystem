@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import type { ApiError } from "../store/db";
+import { getUser } from "../store/db";
 import { verifyToken } from "../routes/auth";
 
 const fail = (
@@ -32,7 +33,13 @@ export async function authenticate(request: any, reply: FastifyReply) {
     return fail(reply, 401, "UNAUTHORIZED", "Invalid or expired token");
   }
 
+  const user = getUser(userId);
+  if (!user) {
+    return fail(reply, 401, "UNAUTHORIZED", "User no longer exists");
+  }
+
   request.userId = userId;
+  request.user = { id: user.id, role: user.role };
 }
 
 /** Role guard: only allow the given roles. Must run after `authenticate`. */
