@@ -1,4 +1,4 @@
 {
-  "framework": "fastify",
+  "framework": "none",
   "outputDirectory": "build/web"
 }
