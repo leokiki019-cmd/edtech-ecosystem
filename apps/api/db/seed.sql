@@ -34,14 +34,15 @@ INSERT OR IGNORE INTO departments (id, college_id, name, code, category, duratio
 ('dept-pht', 'col-cttc', 'Public Health Technician', 'PHT', '2 Years Paramedical', 24, '2026-01-01T00:00:00Z');
 
 INSERT OR IGNORE INTO users (id, display_name, email, phone, role, course_ids, password_hash, is_phone_verified, created_at) VALUES
-('u-teacher-1', 'Dr. Maya Chen', 'maya.chen@example.edu', '+15550001001', 'teacher', '["c-001"]', 'scrypt$d61d8f46ce5212d0de626f54910fe3e1$2af1ee96671aaf94237605c177e50fb6bd0fa9ef4c4ca6543e01afc7b716036d450f753153cb14e3d94a2148e3002d4bac56b8df93e82a60cec5c52a6b7ed2a3', 1, '2026-08-15T00:00:00Z'),
-('u-student-1', 'Alex Rivera', 'alex.rivera@example.edu', '+15550001002', 'student', '["c-001"]', 'scrypt$d61d8f46ce5212d0de626f54910fe3e1$2af1ee96671aaf94237605c177e50fb6bd0fa9ef4c4ca6543e01afc7b716036d450f753153cb14e3d94a2148e3002d4bac56b8df93e82a60cec5c52a6b7ed2a3', 1, '2026-08-15T00:00:00Z'),
-('u-student-2', 'Priya Nair', 'priya.nair@example.edu', '+15550001003', 'student', '["c-001"]', 'scrypt$d61d8f46ce5212d0de626f54910fe3e1$2af1ee96671aaf94237605c177e50fb6bd0fa9ef4c4ca6543e01afc7b716036d450f753153cb14e3d94a2148e3002d4bac56b8df93e82a60cec5c52a6b7ed2a3', 1, '2026-08-15T00:00:00Z'),
-('u-student-3', 'Jordan Lee', 'jordan.lee@example.edu', '+15550001004', 'student', '["c-001"]', 'scrypt$d61d8f46ce5212d0de626f54910fe3e1$2af1ee96671aaf94237605c177e50fb6bd0fa9ef4c4ca6543e01afc7b716036d450f753153cb14e3d94a2148e3002d4bac56b8df93e82a60cec5c52a6b7ed2a3', 1, '2026-08-20T00:00:00Z'),
-('u-admin-1', 'Sam Okafor', 'sam.okafor@example.edu', '+15550001005', 'admin', '[]', 'scrypt$d61d8f46ce5212d0de626f54910fe3e1$2af1ee96671aaf94237605c177e50fb6bd0fa9ef4c4ca6543e01afc7b716036d450f753153cb14e3d94a2148e3002d4bac56b8df93e82a60cec5c52a6b7ed2a3', 1, '2026-07-01T00:00:00Z');
+('u-teacher-1', 'Tayyab', 'tayyab@example.edu', '+15550001001', 'teacher', '["c-001"]', 'scrypt$d61d8f46ce5212d0de626f54910fe3e1$2af1ee96671aaf94237605c177e50fb6bd0fa9ef4c4ca6543e01afc7b716036d450f753153cb14e3d94a2148e3002d4bac56b8df93e82a60cec5c52a6b7ed2a3', 1, '2026-08-15T00:00:00Z'),
+('u-student-1', 'Aeliya', 'aeliya@example.edu', '+15550001002', 'student', '["c-001"]', 'scrypt$d61d8f46ce5212d0de626f54910fe3e1$2af1ee96671aaf94237605c177e50fb6bd0fa9ef4c4ca6543e01afc7b716036d450f753153cb14e3d94a2148e3002d4bac56b8df93e82a60cec5c52a6b7ed2a3', 1, '2026-08-15T00:00:00Z'),
+('u-student-2', 'Sameer', 'sameer@example.edu', '+15550001003', 'student', '["c-001"]', 'scrypt$d61d8f46ce5212d0de626f54910fe3e1$2af1ee96671aaf94237605c177e50fb6bd0fa9ef4c4ca6543e01afc7b716036d450f753153cb14e3d94a2148e3002d4bac56b8df93e82a60cec5c52a6b7ed2a3', 1, '2026-08-15T00:00:00Z'),
+('u-student-3', 'Saifi', 'saifi@example.edu', '+15550001004', 'student', '["c-001"]', 'scrypt$d61d8f46ce5212d0de626f54910fe3e1$2af1ee96671aaf94237605c177e50fb6bd0fa9ef4c4ca6543e01afc7b716036d450f753153cb14e3d94a2148e3002d4bac56b8df93e82a60cec5c52a6b7ed2a3', 1, '2026-08-20T00:00:00Z'),
+('u-student-4', 'Shakeel', 'shakeel@example.edu', '+15550001006', 'student', '["c-001"]', 'scrypt$d61d8f46ce5212d0de626f54910fe3e1$2af1ee96671aaf94237605c177e50fb6bd0fa9ef4c4ca6543e01afc7b716036d450f753153cb14e3d94a2148e3002d4bac56b8df93e82a60cec5c52a6b7ed2a3', 1, '2026-08-25T00:00:00Z'),
+('u-admin-1', 'Usman Shahid', 'usman.shahid@example.edu', '+15550001005', 'admin', '[]', 'scrypt$d61d8f46ce5212d0de626f54910fe3e1$2af1ee96671aaf94237605c177e50fb6bd0fa9ef4c4ca6543e01afc7b716036d450f753153cb14e3d94a2148e3002d4bac56b8df93e82a60cec5c52a6b7ed2a3', 1, '2026-07-01T00:00:00Z');
 
 INSERT OR IGNORE INTO courses (id, title, code, teacher_id, student_ids, term, created_at) VALUES
-('c-001', 'Human-Computer Interaction', 'CS 301', 'u-teacher-1', '["u-student-1", "u-student-2", "u-student-3"]', 'Fall 2026', '2026-08-01T00:00:00Z');
+('c-001', 'Human-Computer Interaction', 'CS 301', 'u-teacher-1', '["u-student-1", "u-student-2", "u-student-3", "u-student-4"]', 'Fall 2026', '2026-08-01T00:00:00Z');
 
 INSERT OR IGNORE INTO assignments (id, course_id, title, brief, due_at, status, created_at) VALUES
 ('a-001', 'c-001', 'Usability Study Report', 'Run a moderated usability study with five participants and report findings, severity ratings and design recommendations.', datetime('now', '+7 days'), 'open', datetime('now', '-14 days')),

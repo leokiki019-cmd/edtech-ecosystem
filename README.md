@@ -28,11 +28,12 @@ All seeded accounts share the password `password123`:
 
 | Phone | Role | Name |
 | --- | --- | --- |
-| `+15550001001` | teacher | Dr. Maya Chen |
-| `+15550001002` | student | Alex Rivera |
-| `+15550001003` | student | Priya Nair |
-| `+15550001004` | student | Jordan Lee |
-| `+15550001005` | admin | Sam Okafor |
+| `+15550001001` | teacher | Tayyab |
+| `+15550001002` | student | Aeliya |
+| `+15550001003` | student | Sameer |
+| `+15550001004` | student | Saifi |
+| `+15550001006` | student | Shakeel |
+| `+15550001005` | admin | Usman Shahid |
 
 ## Components
 
@@ -255,7 +256,7 @@ Test the deployment:
 $api = "https://your-project.vercel.app"
 Invoke-RestMethod "$api/health"
 
-$body = @{ email = "maya.chen@example.edu"; password = "password123" } |
+$body = @{ email = "tayyab@example.edu"; password = "password123" } |
   ConvertTo-Json
 Invoke-RestMethod "$api/api/v1/auth/login" -Method Post `
   -ContentType "application/json" -Body $body
@@ -449,7 +450,7 @@ five seconds to avoid counting long idle periods.
 
 | Entity | Values |
 | --- | --- |
-| Users | Dr. Maya Chen (teacher), Alex Rivera, Priya Nair, Jordan Lee (students), Sam Okafor (admin) |
+| Users | Tayyab (teacher), Aeliya, Sameer, Saifi, Shakeel (students), Usman Shahid (admin) |
 | Course | `c-001` CS 301 Human-Computer Interaction, Fall 2026 |
 | Assignments | `a-001` Usability Study Report, `a-002` Prototype Critique, `a-003` Final Reflection, `a-004` Heuristic Evaluation |
 | Submissions | `s-001` (submitted, effort 84), `s-002` (pending), `s-003` (late, effort 58, grade 72) |

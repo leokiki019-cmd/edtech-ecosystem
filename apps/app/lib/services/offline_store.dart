@@ -95,8 +95,8 @@ class OfflineStore {
     _students = [
       {
         'id': 'u-student-1',
-        'displayName': 'Alex Rivera',
-        'email': 'alex.rivera@example.edu',
+        'displayName': 'Aeliya',
+        'email': 'aeliya@example.edu',
         'phone': '+15550001002',
         'role': 'student',
         'courseIds': ['c-cs301', 'c-cs210', 'c-des150'],
@@ -106,8 +106,8 @@ class OfflineStore {
       },
       {
         'id': 'u-student-2',
-        'displayName': 'Priya Nair',
-        'email': 'priya.nair@example.edu',
+        'displayName': 'Sameer',
+        'email': 'sameer@example.edu',
         'phone': '+15550001003',
         'role': 'student',
         'courseIds': ['c-cs301'],
@@ -117,8 +117,8 @@ class OfflineStore {
       },
       {
         'id': 'u-student-3',
-        'displayName': 'Jordan Lee',
-        'email': 'jordan.lee@example.edu',
+        'displayName': 'Saifi',
+        'email': 'saifi@example.edu',
         'phone': '+15550001004',
         'role': 'student',
         'courseIds': ['c-cs301', 'c-des150'],
@@ -128,8 +128,8 @@ class OfflineStore {
       },
       {
         'id': 'u-student-4',
-        'displayName': 'Maya Khan',
-        'email': 'maya.khan@example.edu',
+        'displayName': 'Shakeel',
+        'email': 'shakeel@example.edu',
         'phone': '+15550001006',
         'role': 'student',
         'courseIds': ['c-cs210'],

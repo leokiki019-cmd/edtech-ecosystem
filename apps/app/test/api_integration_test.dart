@@ -9,7 +9,7 @@ import 'package:http/http.dart' as http;
 /// The suite skips itself when the API is unreachable.
 void main() {
   final api = ApiService.instance;
-  const phone = '+15550001002'; // seeded student Alex Rivera
+  const phone = '+15550001002'; // seeded student Aeliya
   const password = 'password123';
 
   Future<bool> apiReachable() async {
@@ -32,7 +32,7 @@ void main() {
     final ok = await auth.login(phone: phone, password: password);
     expect(ok, isTrue, reason: auth.error);
     expect(auth.isAuthenticated, isTrue);
-    expect(auth.user?.displayName, 'Alex Rivera');
+    expect(auth.user?.displayName, 'Aeliya');
     expect(auth.token, isNotEmpty);
   });
 
@@ -55,8 +55,8 @@ void main() {
     final courses = await api.getCourses();
     expect(courses, isNotEmpty);
     expect(courses.first.code, 'CS 301');
-    expect(courses.first.teacherName, 'Dr. Maya Chen');
-    expect(courses.first.studentCount, 3);
+    expect(courses.first.teacherName, 'Tayyab');
+    expect(courses.first.studentCount, 4);
     expect(courses.first.openAssignmentCount, greaterThan(0));
   });
 

@@ -73,8 +73,8 @@ class OfflineClient extends http.BaseClient {
 
   Map<String, dynamic> _user({
     String role = 'admin',
-    String displayName = 'Sam Okafor',
-    String email = 'sam.okafor@example.edu',
+    String displayName = 'Usman Shahid',
+    String email = 'usman.shahid@example.edu',
     String phone = '+15550001005',
   }) {
     return {
@@ -200,7 +200,7 @@ class OfflineClient extends http.BaseClient {
     final role = body['role']?.toString() ?? 'admin';
     final name = body['display_name']?.toString() ??
         body['displayName']?.toString() ??
-        (role == 'admin' ? 'Sam Okafor' : 'Demo $role');
+        (role == 'admin' ? 'Usman Shahid' : 'Demo $role');
     final email = body['email']?.toString() ?? 'demo@example.edu';
     final phone = body['phone']?.toString() ?? '+15550001005';
     final user = _user(
@@ -296,21 +296,21 @@ class OfflineClient extends http.BaseClient {
           'roster': [
             {
               'studentId': 'u-student-1',
-              'displayName': 'Alex Rivera',
+              'displayName': 'Aeliya',
               'status': 'submitted',
               'score': 84,
               'effortScore': 79,
             },
             {
               'studentId': 'u-student-2',
-              'displayName': 'Priya Nair',
+              'displayName': 'Sameer',
               'status': 'submitted',
               'score': 71,
               'effortScore': 68,
             },
             {
               'studentId': 'u-student-3',
-              'displayName': 'Jordan Lee',
+              'displayName': 'Saifi',
               'status': 'pending',
               'score': 0,
               'effortScore': 0,

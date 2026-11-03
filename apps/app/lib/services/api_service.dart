@@ -112,9 +112,9 @@ class ApiService {
       );
     } catch (_) {
       return [
-        {'studentId': 'u-student-1', 'displayName': 'Alex Rivera', 'status': 'submitted', 'score': 84},
-        {'studentId': 'u-student-2', 'displayName': 'Jordan Lee', 'status': 'submitted', 'score': 71},
-        {'studentId': 'u-student-3', 'displayName': 'Sam Patel', 'status': 'pending', 'score': 0},
+        {'studentId': 'u-student-1', 'displayName': 'Aeliya', 'status': 'submitted', 'score': 84},
+        {'studentId': 'u-student-2', 'displayName': 'Sameer', 'status': 'submitted', 'score': 71},
+        {'studentId': 'u-student-3', 'displayName': 'Saifi', 'status': 'pending', 'score': 0},
       ];
     }
   }
