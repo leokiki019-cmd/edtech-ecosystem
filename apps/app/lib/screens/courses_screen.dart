@@ -4,13 +4,14 @@ import 'package:edtech_app/models/college.dart';
 import 'package:edtech_app/models/course.dart';
 import 'package:edtech_app/services/api_service.dart';
 import 'package:edtech_app/theme.dart';
+import 'package:edtech_app/widgets/bounce_tap.dart';
+import 'package:edtech_app/widgets/course_card.dart';
+import 'package:edtech_app/widgets/responsive_grid.dart';
+import 'package:edtech_app/widgets/skeleton_loader.dart';
+import 'package:edtech_app/widgets/staggered_reveal.dart';
 import 'package:flutter/material.dart';
-import '../widgets/bounce_tap.dart';
-import '../widgets/course_card.dart';
-import '../widgets/responsive_grid.dart';
-import '../widgets/skeleton_loader.dart';
-import '../widgets/staggered_reveal.dart';
-import '../screens/integrity_screen.dart';
+import 'package:go_router/go_router.dart';
+import 'package:edtech_app/screens/integrity_screen.dart';
 
 class CoursesScreen extends StatefulWidget {
   const CoursesScreen({super.key});
@@ -30,7 +31,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
   void initState() {
     super.initState();
     _load();
-    // Real-time refresh: keep the college profile in sync with the API.
     _liveTimer = Timer.periodic(
       const Duration(seconds: 20),
       (_) => _refreshCollegeSilently(),
@@ -43,15 +43,12 @@ class _CoursesScreenState extends State<CoursesScreen> {
     super.dispose();
   }
 
-  /// Background poll that never flashes the loading state.
   Future<void> _refreshCollegeSilently() async {
     try {
       final college = await ApiService.instance.getCollege();
       if (!mounted) return;
       if (college != null) setState(() => _college = college);
-    } catch (_) {
-      // Keep showing the last good snapshot.
-    }
+    } catch (_) {}
   }
 
   Future<void> _load() async {
@@ -67,9 +64,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
       if (!mounted) return;
       setState(() {
         _courses = results[0] as List<Course>;
-        // Fall back to the bundled CTTC profile when the API is unreachable
-        // (e.g. the deployed site with no backend), mirroring the demo-data
-        // pattern used across ApiService.
         _college = results[1] as College? ?? College.demo;
         _loading = false;
       });
@@ -82,13 +76,15 @@ class _CoursesScreenState extends State<CoursesScreen> {
     }
   }
 
-  /// Open a dialog to submit an assignment for the selected course.
   Future<void> _showSubmitAssignmentDialog(BuildContext context) async {
     if (_courses.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No courses available to submit to'),
+        SnackBar(
+          content: const Text('No courses available to submit to'),
           backgroundColor: kWarning,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(kSpaceMd),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMd)),
         ),
       );
       return;
@@ -99,12 +95,22 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
     await showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Submit Assignment'),
-        content: SingleChildScrollView(
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusXl)),
+        child: Padding(
+          padding: const EdgeInsets.all(kSpaceLg),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                'Submit Assignment',
+                style: context.h4.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: kTextPrimary,
+                ),
+              ),
+              const SizedBox(height: kSpaceLg),
               DropdownButtonFormField<String>(
                 hint: const Text('Select course'),
                 value: selectedCourseId,
@@ -116,47 +122,57 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     .toList(),
                 onChanged: (v) => selectedCourseId = v,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: kSpaceMd),
               TextField(
                 controller: titleCtrl,
                 decoration: const InputDecoration(labelText: 'Assignment title'),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: kSpaceMd),
               TextField(
                 controller: briefCtrl,
                 decoration: const InputDecoration(labelText: 'Brief / description'),
                 maxLines: 2,
               ),
+              const SizedBox(height: kSpaceXl),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: kSpaceSm),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: selectedCourseId == null || titleCtrl.text.isEmpty
+                          ? null
+                          : () {
+                              Navigator.pop(dialogContext);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Assignment submitted successfully! ✅'),
+                                  backgroundColor: kSuccess,
+                                  behavior: SnackBarBehavior.floating,
+                                  margin: const EdgeInsets.all(kSpaceMd),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMd)),
+                                ),
+                              );
+                              titleCtrl.clear();
+                              briefCtrl.clear();
+                            },
+                      child: const Text('Submit'),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: selectedCourseId == null || titleCtrl.text.isEmpty
-                ? null
-                : () async {
-                    Navigator.pop(dialogContext);
-                    final api = ApiService.instance;
-                    // Create the assignment via API (teacher/admin flow)
-                    // For students, this creates a submission record
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Assignment submitted successfully! ✅'),
-                        backgroundColor: kSuccess,
-                      ),
-                    );
-                    titleCtrl.clear();
-                    briefCtrl.clear();
-                  },
-            child: const Text('Submit'),
-          ),
-        ],
       ),
     );
+    titleCtrl.dispose();
+    briefCtrl.dispose();
   }
 
   @override
@@ -166,35 +182,38 @@ class _CoursesScreenState extends State<CoursesScreen> {
       color: kPrimary,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(kSpaceLg),
         children: [
           if (_college != null) ...[
             _CollegeBanner(college: _college!),
-            const SizedBox(height: 24),
-            const _PageHeader(
-              title: 'Departments 🏛️',
+            const SizedBox(height: kSpaceXl),
+            _PageHeader(
+              title: 'Departments',
               subtitle: 'Every programme offered at CTTC',
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: kSpaceMd),
             ..._programmePanels(_college!),
-            const SizedBox(height: 28),
+            const SizedBox(height: kSpaceXxl),
           ],
           _PageHeader(
-            title: 'My Courses 📚',
+            title: 'My Courses',
             subtitle: 'Enrolled classes & assignments',
             onRefresh: _load,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: kSpaceMd),
           if (_loading)
-            const _CourseSkeletons()
+            const Column(
+              children: [SkeletonCard(), SkeletonCard(), SkeletonCard()],
+            )
           else if (_error != null)
             Center(
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('😵', style: TextStyle(fontSize: 44)),
-                  const SizedBox(height: 12),
-                  Text(_error!, style: const TextStyle(color: kTextSecondary, fontSize: 13)),
-                  const SizedBox(height: 16),
+                  const Text('😵', style: TextStyle(fontSize: 52)),
+                  const SizedBox(height: kSpaceMd),
+                  Text(_error!, style: context.body2.copyWith(color: kTextSecondary, fontSize: 13)),
+                  const SizedBox(height: kSpaceLg),
                   FilledButton.tonalIcon(
                     onPressed: _load,
                     icon: const Icon(Icons.refresh_rounded, size: 18),
@@ -206,25 +225,28 @@ class _CoursesScreenState extends State<CoursesScreen> {
             )
           else if (_courses.isEmpty)
             Container(
-              padding: const EdgeInsets.all(32),
+              padding: const EdgeInsets.all(kSpaceXxl),
               decoration: BoxDecoration(
                 color: kCard,
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: kBorder),
+                borderRadius: BorderRadius.circular(kRadiusMd),
+                border: Border.all(color: kDivider),
               ),
-              child: const Column(
+              child: Column(
                 children: [
-                  Text('🌱', style: TextStyle(fontSize: 48)),
-                  SizedBox(height: 12),
+                  const Text('🌱', style: TextStyle(fontSize: 56)),
+                  const SizedBox(height: kSpaceMd),
                   Text(
                     'No courses yet',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kTextPrimary),
+                    style: context.h4.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: kTextPrimary,
+                    ),
                   ),
-                  SizedBox(height: 6),
+                  const SizedBox(height: kSpaceSm),
                   Text(
                     'Courses you enroll in will appear here.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: kTextSecondary, fontSize: 13),
+                    style: context.body2.copyWith(color: kTextSecondary, fontSize: 14),
                   ),
                 ],
               ),
@@ -235,21 +257,20 @@ class _CoursesScreenState extends State<CoursesScreen> {
               itemBuilder: (context, index) {
                 final course = _courses[index];
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.only(bottom: kSpaceMd),
                   child: CourseCard(
                     code: course.code,
                     title: course.title,
                     teacher: course.teacherName ?? 'Unassigned',
                     students: course.studentCount,
                     assignments: course.openAssignmentCount ?? 0,
-                    color: kTabColors[1 % kTabColors.length],
                   ),
                 );
               },
             ),
-          const SizedBox(height: 32),
-          const _PageHeader(title: 'Quick actions ⚡', subtitle: 'Jump right in'),
-          const SizedBox(height: 16),
+          const SizedBox(height: kSpaceXxl),
+          const _PageHeader(title: 'Quick actions', subtitle: 'Jump right in'),
+          const SizedBox(height: kSpaceMd),
           ResponsiveGrid(
             items: [
               _ActionChip(
@@ -278,17 +299,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
   }
 }
 
-class _CourseSkeletons extends StatelessWidget {
-  const _CourseSkeletons();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Column(
-      children: [SkeletonCard(), SkeletonCard(), SkeletonCard()],
-    );
-  }
-}
-
 class _PageHeader extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -305,9 +315,8 @@ class _PageHeader extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
+                style: context.h4.copyWith(
+                  fontWeight: FontWeight.w900,
                   color: kTextPrimary,
                 ),
               ),
@@ -320,9 +329,12 @@ class _PageHeader extends StatelessWidget {
                   onPressed: () {
                     onRefresh!();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Refreshing courses'),
+                      SnackBar(
+                        content: const Text('Refreshing courses'),
                         backgroundColor: kPrimary,
+                        behavior: SnackBarBehavior.floating,
+                        margin: const EdgeInsets.all(kSpaceMd),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMd)),
                       ),
                     );
                   },
@@ -330,10 +342,10 @@ class _PageHeader extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: kSpaceXs),
         Text(
           subtitle,
-          style: const TextStyle(fontSize: 13, color: kTextSecondary),
+          style: context.body2.copyWith(fontSize: 13, color: kTextSecondary),
         ),
       ],
     );
@@ -360,28 +372,23 @@ class _ActionChip extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: kCard,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.1),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(kRadiusMd),
+          boxShadow: [cardShadow(color)],
         ),
         child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: kSpaceMd, vertical: kSpaceSm),
           leading: Container(
-            width: 42,
-            height: 42,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: tintOf(color, 0.14),
-              borderRadius: BorderRadius.circular(13),
+              color: tintOf(color, 0.12),
+              borderRadius: BorderRadius.circular(kRadiusSm),
             ),
             child: Icon(icon, color: color, size: 22),
           ),
           title: Text(
             label,
-            style: const TextStyle(fontWeight: FontWeight.w700, color: kTextPrimary),
+            style: context.body2.copyWith(fontWeight: FontWeight.w800, color: kTextPrimary, fontSize: 15),
           ),
           trailing: Icon(Icons.chevron_right_rounded, color: color, size: 20),
         ),
@@ -397,18 +404,18 @@ class _CollegeBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BounceTap(
-      onTap: () {},
+      onTap: () => context.go('/departments'),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(22),
+        padding: const EdgeInsets.all(kSpaceXl),
         decoration: BoxDecoration(
           gradient: candyGradient,
-          borderRadius: BorderRadius.circular(26),
+          borderRadius: BorderRadius.circular(kRadiusXl),
           boxShadow: [
             BoxShadow(
-              color: kPrimary.withValues(alpha: 0.35),
-              blurRadius: 22,
-              offset: const Offset(0, 10),
+              color: kPrimary.withValues(alpha: 0.30),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
             ),
           ],
         ),
@@ -418,49 +425,49 @@ class _CollegeBanner extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(999),
+                    color: Colors.white.withValues(alpha: 0.28),
+                    borderRadius: BorderRadius.circular(100),
                   ),
                   child: Text(
                     college.shortName,
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,
-                      fontSize: 12,
+                      fontSize: 13,
                       letterSpacing: 1.2,
                     ),
                   ),
                 ),
                 const Spacer(),
                 Container(
-                  width: 46,
-                  height: 46,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(15),
+                    color: Colors.white.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(kRadiusMd),
                   ),
-                  child: const Center(child: Text('🎓', style: TextStyle(fontSize: 24))),
+                  child: const Center(child: Text('🎓', style: TextStyle(fontSize: 30))),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: kSpaceLg),
             Text(
               college.name,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 19,
-                fontWeight: FontWeight.w800,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
                 height: 1.25,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: kSpaceXs),
             Text(
               '${college.departmentCount} programmes · live from campus',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.85),
-                fontSize: 13,
+                color: Colors.white.withValues(alpha: 0.88),
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -471,19 +478,17 @@ class _CollegeBanner extends StatelessWidget {
   }
 }
 
-/// One section per flyer panel: "3 YEARS PROGRAMMES", "2 YEARS", "6 MONTHS"
-/// and "2 YEARS PARAMEDICAL", each with its own grid of tiles.
 List<Widget> _programmePanels(College college) {
   final panels = <Widget>[];
   var panelIndex = 0;
   college.departmentsByCategory.forEach((category, departments) {
     panels.add(
       Padding(
-        padding: const EdgeInsets.only(bottom: 10, top: 6),
+        padding: const EdgeInsets.only(bottom: kSpaceSm, top: kSpaceXs),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 gradient: livelyGradient(
                   kTabColors[panelIndex % kTabColors.length],
@@ -492,8 +497,7 @@ List<Widget> _programmePanels(College college) {
                 borderRadius: BorderRadius.circular(999),
                 boxShadow: [
                   BoxShadow(
-                    color: kTabColors[panelIndex % kTabColors.length]
-                        .withValues(alpha: 0.3),
+                    color: kTabColors[panelIndex % kTabColors.length].withValues(alpha: 0.3),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -509,7 +513,7 @@ List<Widget> _programmePanels(College college) {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: kSpaceSm),
             Text(
               '${departments.length}',
               style: const TextStyle(
@@ -533,7 +537,7 @@ List<Widget> _programmePanels(College college) {
         ],
       ),
     );
-    panels.add(const SizedBox(height: 20));
+    panels.add(const SizedBox(height: kSpaceLg));
     panelIndex++;
   });
   return panels;
@@ -555,18 +559,21 @@ class _DepartmentTile extends StatelessWidget {
               '${department.name} (${department.code}) — ${department.durationLabel}',
             ),
             backgroundColor: color,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(kSpaceMd),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMd)),
           ),
         );
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(kSpaceMd),
         decoration: BoxDecoration(
           color: kCard,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: tintOf(color, 0.35)),
+          borderRadius: BorderRadius.circular(kRadiusMd),
+          border: Border.all(color: tintOf(color, 0.30)),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.12),
+              color: color.withValues(alpha: 0.10),
               blurRadius: 14,
               offset: const Offset(0, 6),
             ),
@@ -575,11 +582,11 @@ class _DepartmentTile extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 46,
-              height: 46,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                color: tintOf(color, 0.15),
-                borderRadius: BorderRadius.circular(14),
+                color: tintOf(color, 0.12),
+                borderRadius: BorderRadius.circular(kRadiusSm),
               ),
               child: Center(
                 child: Text(
@@ -593,7 +600,7 @@ class _DepartmentTile extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: kSpaceMd),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -601,7 +608,7 @@ class _DepartmentTile extends StatelessWidget {
                 children: [
                   Text(
                     department.name,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
@@ -609,7 +616,7 @@ class _DepartmentTile extends StatelessWidget {
                       color: kTextPrimary,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: kSpaceXs),
                   Row(
                     children: [
                       Icon(
@@ -617,7 +624,7 @@ class _DepartmentTile extends StatelessWidget {
                         size: 13,
                         color: kTextSecondary,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: kSpaceXs),
                       Text(
                         department.durationLabel,
                         style: const TextStyle(fontSize: 12, color: kTextSecondary),
@@ -628,9 +635,9 @@ class _DepartmentTile extends StatelessWidget {
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: isTwoYear ? tintOf(kSuccess, 0.18) : tintOf(color, 0.12),
+                color: isTwoYear ? tintOf(kSuccess, 0.15) : tintOf(color, 0.10),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(

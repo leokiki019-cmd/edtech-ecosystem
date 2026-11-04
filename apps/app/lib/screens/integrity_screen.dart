@@ -3,18 +3,17 @@ import 'package:edtech_app/models/assignment.dart';
 import 'package:edtech_app/models/effort_report.dart';
 import 'package:edtech_app/services/api_service.dart';
 import 'package:edtech_app/theme.dart';
+import 'package:edtech_app/widgets/animated_number.dart';
+import 'package:edtech_app/widgets/bounce_tap.dart';
+import 'package:edtech_app/widgets/confetti_burst.dart';
+import 'package:edtech_app/widgets/effort_gauge.dart';
+import 'package:edtech_app/widgets/floating_shapes.dart';
+import 'package:edtech_app/widgets/lively_card.dart';
+import 'package:edtech_app/widgets/skeleton_loader.dart';
+import 'package:edtech_app/widgets/staggered_reveal.dart';
+import 'package:edtech_app/widgets/stat_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../widgets/animated_number.dart';
-import '../widgets/bounce_tap.dart';
-import '../widgets/confetti_burst.dart';
-import '../widgets/effort_gauge.dart';
-import '../widgets/floating_shapes.dart';
-import '../widgets/hover_scale.dart';
-import '../widgets/lively_card.dart';
-import '../widgets/skeleton_loader.dart';
-import '../widgets/staggered_reveal.dart';
-import '../widgets/stat_card.dart';
 
 class IntegrityScreen extends StatefulWidget {
   const IntegrityScreen({super.key});
@@ -46,8 +45,6 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
     final userId = context.read<AuthProvider>().user?.id ?? 'u-student-1';
 
     try {
-      // Use the student's first course and its first open assignment as the
-      // integrity focus until assignment selection exists in the app.
       final courses = await ApiService.instance.getCourses();
       if (courses.isEmpty) {
         throw Exception('No courses available for your account');
@@ -73,7 +70,6 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
         _loading = false;
       });
 
-      // Celebrate a strong score.
       if (report != null && report.effortScore.score >= 75) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _confettiKey.currentState?.celebrate();
@@ -90,22 +86,25 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        _buildHeader(context),
-        const SizedBox(height: 24),
-        ConfettiBurst(
-          key: _confettiKey,
-          child: _loading
-              ? const _ReportSkeleton()
-              : _error != null
-                  ? _ErrorState(error: _error!, onRetry: _load)
-                  : !_hasTelemetry
-                      ? _EmptyState(assignmentTitle: _assignment?.title ?? 'this assignment')
-                      : _buildReportSection(),
-        ),
-      ],
+    return Scaffold(
+      backgroundColor: kBackground,
+      body: ListView(
+        padding: const EdgeInsets.all(kSpaceLg),
+        children: [
+          _buildHeader(context),
+          const SizedBox(height: kSpaceXl),
+          ConfettiBurst(
+            key: _confettiKey,
+            child: _loading
+                ? const _ReportSkeleton()
+                : _error != null
+                    ? _ErrorState(error: _error!, onRetry: _load)
+                    : !_hasTelemetry
+                        ? _EmptyState(assignmentTitle: _assignment?.title ?? 'this assignment')
+                        : _buildReportSection(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -117,17 +116,18 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Integrity 🛡️',
+                'Integrity',
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
                   color: kTextPrimary,
                 ),
               ),
+              const SizedBox(height: kSpaceXs),
               if (_assignment != null)
                 Text(
                   _assignment!.title,
-                  style: const TextStyle(
+                  style: context.body2.copyWith(
                     fontSize: 13,
                     color: kTextSecondary,
                   ),
@@ -142,9 +142,12 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
             onPressed: () {
               _load();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Refreshing integrity report'),
+                SnackBar(
+                  content: const Text('Refreshing integrity report'),
                   backgroundColor: kPrimary,
+                  behavior: SnackBarBehavior.floating,
+                  margin: const EdgeInsets.all(kSpaceMd),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMd)),
                 ),
               );
             },
@@ -163,11 +166,11 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
             gradient: candyGradient,
             child: FloatingShapes(
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(kSpaceXl),
                 child: Column(
                   children: [
                     EffortGauge(score: _report!.effortScore.score),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: kSpaceMd),
                     AnimatedNumber(
                       value: _report!.effortScore.score,
                       style: const TextStyle(
@@ -177,12 +180,12 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
                         height: 1,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: kSpaceSm),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(30),
                       ),
                       child: Text(
                         _report!.flags.isNotEmpty
@@ -200,11 +203,11 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: kSpaceXl),
           Row(
             children: [
               Expanded(
-                child: HoverScale(
+                child: BounceTap(
                   child: StatCard(
                     title: 'Keystrokes',
                     value: _report!.effortScore.keystrokes,
@@ -213,9 +216,9 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: kSpaceSm),
               Expanded(
-                child: HoverScale(
+                child: BounceTap(
                   child: StatCard(
                     title: 'Pastes',
                     value: _report!.effortScore.pastes,
@@ -224,9 +227,9 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: kSpaceSm),
               Expanded(
-                child: HoverScale(
+                child: BounceTap(
                   child: StatCard(
                     title: 'AI switches',
                     value: _report!.effortScore.aiTabSwitches,
@@ -237,29 +240,29 @@ class _IntegrityScreenState extends State<IntegrityScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: kSpaceXl),
           LivelyCard(
             gradient: livelyGradient(kSurface, const Color(0xFFF5F7FA)),
             child: const Padding(
-              padding: EdgeInsets.all(20),
+              padding: EdgeInsets.all(kSpaceMd),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '🔒 Privacy note',
+                    'Privacy note',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       color: kTextPrimary,
-                      fontSize: 16,
+                      fontSize: 15,
                     ),
                   ),
-                  SizedBox(height: 8),
+                  SizedBox(height: kSpaceSm),
                   Text(
                     'Only typing cadence, paste volume and tab activity are recorded. '
                     'Keystroke content and password fields are never captured.',
                     style: TextStyle(
                       color: kTextSecondary,
-                      height: 1.6,
+                      height: 1.7,
                     ),
                   ),
                 ],
@@ -280,22 +283,22 @@ class _ReportSkeleton extends StatelessWidget {
     return Column(
       children: [
         Container(
-          height: 320,
+          height: 340,
           decoration: BoxDecoration(
             gradient: candyGradient,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(kRadiusMd),
           ),
           child: const Center(
             child: CircularProgressIndicator(color: Colors.white),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: kSpaceMd),
         const Row(
           children: [
             Expanded(child: SkeletonBox(height: 110, borderRadius: BorderRadius.all(Radius.circular(18)))),
-            SizedBox(width: 12),
+            SizedBox(width: kSpaceSm),
             Expanded(child: SkeletonBox(height: 110, borderRadius: BorderRadius.all(Radius.circular(18)))),
-            SizedBox(width: 12),
+            SizedBox(width: kSpaceSm),
             Expanded(child: SkeletonBox(height: 110, borderRadius: BorderRadius.all(Radius.circular(18)))),
           ],
         ),
@@ -314,43 +317,43 @@ class _EmptyState extends StatelessWidget {
     return LivelyCard(
       gradient: livelyGradient(kSurface, const Color(0xFFF5F7FA)),
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(kSpaceXxl),
         child: Column(
           children: [
-            const Text('✍️', style: TextStyle(fontSize: 52)),
-            const SizedBox(height: 16),
+            const Text('✍️', style: TextStyle(fontSize: 56)),
+            const SizedBox(height: kSpaceMd),
             const Text(
               'No writing sessions yet',
               style: TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w900,
                 color: kTextPrimary,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: kSpaceSm),
             Text(
               'Your effort score for "$assignmentTitle" will appear once '
               'you draft with the Integrity Lens browser extension enabled.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: context.body2.copyWith(
                 color: kTextSecondary,
-                height: 1.6,
-                fontSize: 13,
+                height: 1.7,
+                fontSize: 14,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: kSpaceLg),
             BounceTap(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
                   color: tintOf(kPrimary, 0.1),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(kRadiusMd),
                 ),
                 child: const Text(
                   'Learn how it works →',
                   style: TextStyle(
                     color: kPrimary,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     fontSize: 13,
                   ),
                 ),
@@ -375,14 +378,14 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('😵', style: TextStyle(fontSize: 44)),
-          const SizedBox(height: 12),
+          const Text('😵', style: TextStyle(fontSize: 52)),
+          const SizedBox(height: kSpaceMd),
           Text(
             error,
-            style: const TextStyle(color: kTextSecondary, fontSize: 12),
+            style: context.body2.copyWith(color: kTextSecondary, fontSize: 13),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: kSpaceLg),
           FilledButton.tonalIcon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded, size: 18),
@@ -394,4 +397,3 @@ class _ErrorState extends StatelessWidget {
     );
   }
 }
-

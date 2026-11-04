@@ -10,11 +10,13 @@ class BottomNav extends StatelessWidget {
   const BottomNav({super.key, required this.selectedIndex, required this.onTap});
 
   static const _items = [
+    // Top row (primary)
     {'icon': Icons.dashboard_rounded, 'label': 'Home'},
     {'icon': Icons.school_rounded, 'label': 'Courses'},
     {'icon': Icons.calendar_month_rounded, 'label': 'Calendar'},
     {'icon': Icons.chat_bubble_rounded, 'label': 'Chat'},
     {'icon': Icons.verified_rounded, 'label': 'Integrity'},
+    // Bottom row (secondary)
     {'icon': Icons.people_rounded, 'label': 'Students'},
     {'icon': Icons.business_rounded, 'label': 'Departments'},
     {'icon': Icons.check_circle_rounded, 'label': 'Attendance'},
@@ -24,17 +26,17 @@ class BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-      height: 66,
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      height: 88,
       decoration: BoxDecoration(
         color: kSurface,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: kBorder),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: kBorder, width: 1),
         boxShadow: [
           BoxShadow(
-            color: kPrimary.withValues(alpha: 0.10),
-            blurRadius: 30,
-            offset: const Offset(0, 10),
+            color: kPrimary.withValues(alpha: 0.12),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -45,13 +47,19 @@ class BottomNav extends StatelessWidget {
             final item = _items[index];
             final color = kTabColors[index % kTabColors.length];
             final isSelected = selectedIndex == index;
+            // Two-row layout: first 5 in top, rest in bottom.
+            final inTopRow = index < 5;
             return Expanded(
-              child: _NavTab(
-                icon: item['icon'] as IconData,
-                label: item['label'] as String,
-                color: color,
-                isSelected: isSelected,
-                onTap: () => onTap(index),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: _NavTab(
+                  icon: item['icon'] as IconData,
+                  label: item['label'] as String,
+                  color: color,
+                  isSelected: isSelected,
+                  inTopRow: inTopRow,
+                  onTap: () => onTap(index),
+                ),
               ),
             );
           }),
@@ -66,6 +74,7 @@ class _NavTab extends StatelessWidget {
   final String label;
   final Color color;
   final bool isSelected;
+  final bool inTopRow;
   final VoidCallback onTap;
 
   const _NavTab({
@@ -74,7 +83,17 @@ class _NavTab extends StatelessWidget {
     required this.color,
     required this.isSelected,
     required this.onTap,
-  });
+    this.inTopRow = true,
+  });  Widget _label() {
+    return Text(
+      label,
+      style: TextStyle(
+        fontSize: inTopRow ? 9.0 : 8.0,
+        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+        color: isSelected ? color : kTextSecondary,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,50 +103,41 @@ class _NavTab extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 6),
           // Gradient pill that springs in behind the active icon.
           AnimatedContainer(
-            duration: const Duration(milliseconds: 380),
+            duration: const Duration(milliseconds: 340),
             curve: Curves.easeOutBack,
-            width: isSelected ? 56 : 0,
-            height: 32,
+            width: isSelected ? 44 : 0,
+            height: 28,
             decoration: BoxDecoration(
-              gradient: livelyGradient(color, shadeOf(color, 0.2)),
-              borderRadius: BorderRadius.circular(16),
+              gradient: livelyGradient(color, shadeOf(color, 0.18)),
+              borderRadius: BorderRadius.circular(14),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
                         color: color.withValues(alpha: 0.4),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
                       ),
                     ]
                   : null,
             ),
             child: Center(
               child: AnimatedScale(
-                duration: const Duration(milliseconds: 320),
+                duration: const Duration(milliseconds: 280),
                 curve: Curves.elasticOut,
-                scale: isSelected ? 1.15 : 1.0,
+                scale: isSelected ? 1.12 : 1.0,
                 child: Icon(
                   icon,
-                  size: 21,
+                  size: inTopRow ? 18 : 17,
                   color: isSelected ? Colors.white : kTextSecondary,
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 3),
-          AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 200),
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-              color: isSelected ? color : kTextSecondary,
-            ),
-            child: Text(label),
-          ),
-          const SizedBox(height: 5),
+          SizedBox(height: inTopRow ? 2.0 : 6.0),
+          _label(),
+          const SizedBox(height: 2),
         ],
       ),
     );

@@ -4,7 +4,6 @@ import 'package:edtech_app/theme.dart';
 import 'package:edtech_app/widgets/stat_card.dart';
 import 'package:flutter/material.dart';
 
-/// Teacher attendance screen: mark present/absent/late for students in a course.
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
 
@@ -19,13 +18,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   List<Map<String, dynamic>> _studentsWithAttendance = [];
   bool _loading = true;
   bool _saving = false;
-
-  final Map<String, String> _statusColors = {
-    'present': kSuccess.toString(),
-    'absent': kError.toString(),
-    'late': kWarning.toString(),
-    'excused': kAccent.toString(),
-  };
 
   @override
   void initState() {
@@ -74,9 +66,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       date: _selectedDate,
       records: records,
     );
+    if (!mounted) return;
     setState(() => _saving = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Attendance saved successfully')),
+      SnackBar(
+        content: const Text('Attendance saved successfully'),
+        backgroundColor: kSuccess,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(kSpaceMd),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMd)),
+      ),
     );
   }
 
@@ -93,24 +92,27 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: kBackground,
       appBar: AppBar(
         title: const Text('Attendance'),
-        centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: kTextPrimary,
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // Course selector + date
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(kSpaceLg),
                   child: Column(
                     children: [
                       Row(
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: _selectedCourseId,
+                              initialValue: _selectedCourseId,
                               decoration: const InputDecoration(labelText: 'Course'),
                               items: _courses.map((c) => DropdownMenuItem(
                                     value: c.id,
@@ -125,7 +127,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                               },
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: kSpaceSm),
                           Expanded(
                             child: TextField(
                               decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
@@ -138,103 +140,139 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: kSpaceMd),
                       SizedBox(
                         width: double.infinity,
-                        height: 44,
+                        height: kSpaceMd + 24,
                         child: ElevatedButton.icon(
                           onPressed: _studentsWithAttendance.isEmpty ? null : _saveAttendance,
-                          icon: const Icon(Icons.save),
+                          icon: const Icon(Icons.save_rounded),
                           label: const Text('Save Attendance'),
                         ),
                       ),
                     ],
                   ),
                 ),
-                // Stats
                 if (_studentsWithAttendance.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: kSpaceLg),
                     child: Row(
                       children: [
                         Expanded(
                           child: StatCard(
                             title: 'Present',
                             value: _studentsWithAttendance.where((s) => s['status'] == 'present').length,
-                            icon: Icons.check_circle,
+                            icon: Icons.check_circle_rounded,
                             color: kSuccess,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: kSpaceSm),
                         Expanded(
                           child: StatCard(
                             title: 'Absent',
                             value: _studentsWithAttendance.where((s) => s['status'] == 'absent').length,
-                            icon: Icons.cancel,
+                            icon: Icons.cancel_rounded,
                             color: kError,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: kSpaceSm),
                         Expanded(
                           child: StatCard(
                             title: 'Late',
                             value: _studentsWithAttendance.where((s) => s['status'] == 'late').length,
-                            icon: Icons.access_time,
+                            icon: Icons.access_time_rounded,
                             color: kWarning,
                           ),
                         ),
                       ],
                     ),
                   ),
-                // Student list
                 Expanded(
                   child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(kSpaceLg),
                     itemCount: _studentsWithAttendance.length,
                     itemBuilder: (context, index) {
                       final s = _studentsWithAttendance[index];
                       final status = s['status'] as String? ?? 'absent';
-                      return Card(
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: _statusColor(status).withOpacity(0.2),
-                            child: Text(
-                              (s['displayName'] ?? '?').toString().substring(0, 1).toUpperCase(),
-                              style: TextStyle(color: _statusColor(status), fontWeight: FontWeight.bold),
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: kSpaceMd),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: kCard,
+                            borderRadius: BorderRadius.circular(kRadiusMd),
+                            border: Border.all(color: kDivider),
+                            boxShadow: [cardShadow(kTextSecondary)],
+                          ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.all(kSpaceMd),
+                            leading: CircleAvatar(
+                              backgroundColor: _statusColor(status).withValues(alpha: 0.15),
+                              child: Text(
+                                (s['displayName'] ?? '?').toString().substring(0, 1).toUpperCase(),
+                                style: TextStyle(color: _statusColor(status), fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
                             ),
-                          ),
-                          title: Text(s['displayName'] ?? 'Unknown'),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Roll: ${s['rollNumber'] ?? s['id']}'),
-                              if ((s['notes'] as String?)?.isNotEmpty == true)
-                                Text(s['notes'], style: const TextStyle(fontSize: 11, color: kTextSecondary)),
-                            ],
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ...['present', 'absent', 'late', 'excused'].map((st) => Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                                    child: ChoiceChip(
-                                      label: Text(st.substring(0, 1).toUpperCase(),
-                                          style: TextStyle(color: status == st ? Colors.white : kTextSecondary)),
-                                      selected: status == st,
-                                      selectedColor: _statusColor(st),
-                                      onSelected: (_) {
+                            title: Text(
+                              s['displayName'] ?? 'Unknown',
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: kTextPrimary),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: kSpaceXs),
+                                Text(
+                                  'Roll: ${s['rollNumber'] ?? s['id']}',
+                                  style: const TextStyle(fontSize: 12, color: kTextBody),
+                                ),
+                                if ((s['notes'] as String?)?.isNotEmpty == true)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: kSpaceXs),
+                                    child: Text(
+                                      s['notes'],
+                                      style: const TextStyle(fontSize: 11, color: kTextSecondary),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            trailing: Wrap(
+                              spacing: kSpaceXs,
+                              children: [
+                                ...['present', 'absent', 'late', 'excused'].map((st) => Container(
+                                  decoration: BoxDecoration(
+                                    color: status == st ? _statusColor(st) : Colors.transparent,
+                                    border: Border.all(color: status == st ? _statusColor(st) : kDivider),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(20),
+                                      onTap: () {
                                         setState(() {
                                           s['status'] = st;
                                         });
                                       },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        child: Text(
+                                          st.substring(0, 1).toUpperCase(),
+                                          style: TextStyle(
+                                            color: status == st ? Colors.white : kTextSecondary,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  )),
-                              if ((s['notes'] as String?)?.isNotEmpty == true)
-                                IconButton(
-                                  icon: const Icon(Icons.note, size: 18),
-                                  onPressed: () => _editNotes(s),
-                                ),
-                            ],
+                                  ),
+                                )),
+                                if ((s['notes'] as String?)?.isNotEmpty == true)
+                                  IconButton(
+                                    icon: const Icon(Icons.note, size: 18, color: kPrimary),
+                                    onPressed: () => _editNotes(s),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -242,7 +280,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                 ),
                 if (_saving)
-                  const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator())),
+                  const Padding(padding: EdgeInsets.all(kSpaceLg), child: Center(child: CircularProgressIndicator())),
               ],
             ),
     );
@@ -252,21 +290,49 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final controller = TextEditingController(text: student['notes'] ?? '');
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Add Notes'),
-        content: TextField(controller: controller, maxLines: 3),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                student['notes'] = controller.text.trim();
-              });
-              Navigator.pop(dialogContext);
-            },
-            child: const Text('Save'),
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusXl)),
+        child: Padding(
+          padding: const EdgeInsets.all(kSpaceLg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Add Notes',
+                style: context.h4.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: kTextPrimary,
+                ),
+              ),
+              const SizedBox(height: kSpaceMd),
+              TextField(controller: controller, maxLines: 3),
+              const SizedBox(height: kSpaceXl),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: kSpaceSm),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () {
+                        setState(() {
+                          student['notes'] = controller.text.trim();
+                        });
+                        Navigator.pop(dialogContext);
+                      },
+                      child: const Text('Save'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

@@ -2,8 +2,8 @@ import 'package:edtech_app/models/calendar_event.dart';
 import 'package:edtech_app/theme.dart';
 import 'package:flutter/material.dart';
 
-/// A deadline tile with a pastel colour wash, gradient emoji bubble and a
-/// friendly "in X days" pill. Springy on press.
+/// A polished deadline tile with a gradient wash, emoji badge, and relative
+/// timing pill. Soft shadows and springy press feedback.
 class DeadlineCard extends StatefulWidget {
   final CalendarEvent event;
   final VoidCallback? onTap;
@@ -19,7 +19,7 @@ class _DeadlineCardState extends State<DeadlineCard>
   late final AnimationController _controller = AnimationController(
     vsync: this,
     value: 1.0,
-    duration: const Duration(milliseconds: 300),
+    duration: const Duration(milliseconds: 320),
   );
 
   @override
@@ -28,10 +28,16 @@ class _DeadlineCardState extends State<DeadlineCard>
     super.dispose();
   }
 
-  void _press() => _controller.animateTo(0.96,
-      duration: const Duration(milliseconds: 80), curve: Curves.easeOut);
-  void _release() => _controller.animateTo(1.0,
-      duration: const Duration(milliseconds: 500), curve: Curves.elasticOut);
+  void _press() => _controller.animateTo(
+        0.95,
+        duration: const Duration(milliseconds: 80),
+        curve: Curves.easeOutCubic,
+      );
+  void _release() => _controller.animateTo(
+        1.0,
+        duration: const Duration(milliseconds: 550),
+        curve: Curves.elasticOut,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -44,79 +50,101 @@ class _DeadlineCardState extends State<DeadlineCard>
       onTapDown: (_) => _press(),
       onTapUp: (_) => _release(),
       onTapCancel: _release,
-      child: ScaleTransition(
-        scale: _controller,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [tintOf(kindColor, 0.16), tintOf(kindColor, 0.04)],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: kCard,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: kindColor.withValues(alpha: 0.18),
+              blurRadius: 20,
+              offset: const Offset(0, 12),
             ),
-            border: Border.all(color: tintOf(kindColor, 0.28)),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: ListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            leading: Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                gradient: livelyGradient(kindColor, shadeOf(kindColor, 0.15)),
-                borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(
-                    color: kindColor.withValues(alpha: 0.35),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          child: Row(
+            children: [
+              // Emoji badge with subtle shadow.
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: tintOf(kindColor, 0.14),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: kindColor.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Content column.
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.event.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: kTextPrimary,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${widget.event.kind}  ·  ${widget.event.courseId ?? 'Institution'}',
+                      style: const TextStyle(fontSize: 11, color: kTextSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              // Timing pill + emoji together on the right.
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: kindColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${widget.event.startsAt.month}/${widget.event.startsAt.day}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    relative,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: kindColor,
+                    ),
                   ),
                 ],
               ),
-              child: Center(
-                child: Text(emoji, style: const TextStyle(fontSize: 22)),
-              ),
-            ),
-            title: Text(
-              widget.event.title,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w800, color: kTextPrimary),
-            ),
-            subtitle: Text(
-              '${widget.event.kind}  ·  ${widget.event.courseId ?? 'Institution'}',
-              style: const TextStyle(fontSize: 12, color: kTextSecondary),
-            ),
-            trailing: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: kindColor,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    '${widget.event.startsAt.month}/${widget.event.startsAt.day}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  relative,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w800,
-                    color: kindColor,
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
         ),
       ),

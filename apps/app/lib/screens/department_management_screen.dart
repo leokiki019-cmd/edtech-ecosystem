@@ -3,7 +3,6 @@ import 'package:edtech_app/theme.dart';
 import 'package:edtech_app/widgets/stat_card.dart';
 import 'package:flutter/material.dart';
 
-/// Admin screen: drag-and-drop students between departments.
 class DepartmentManagementScreen extends StatefulWidget {
   const DepartmentManagementScreen({super.key});
 
@@ -24,6 +23,7 @@ class _DepartmentManagementScreenState extends State<DepartmentManagementScreen>
   }
 
   Future<void> _loadData() async {
+    setState(() => _loading = true);
     final api = ApiService();
     final departments = await api.getDepartments();
     final students = await api.getStudents();
@@ -60,28 +60,32 @@ class _DepartmentManagementScreenState extends State<DepartmentManagementScreen>
       feedback: Material(
         color: Colors.transparent,
         child: Container(
-          width: 120,
-          padding: const EdgeInsets.all(8),
+          width: 140,
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: kPrimary.withOpacity(0.9),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8)],
+            color: kPrimary.withValues(alpha: 0.95),
+            borderRadius: BorderRadius.circular(kRadiusMd),
+            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 12)],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(student['displayName'] ?? 'Student',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              Text(
+                student['displayName'] ?? 'Student',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+              ),
               const SizedBox(height: 4),
-              Text(student['rollNumber'] ?? student['id'],
-                  style: const TextStyle(color: Colors.white70, fontSize: 11)),
+              Text(
+                student['rollNumber'] ?? student['id'],
+                style: const TextStyle(color: Colors.white70, fontSize: 11),
+              ),
             ],
           ),
         ),
       ),
       childWhenDragging: Opacity(
-        opacity: 0.4,
+        opacity: 0.5,
         child: _studentChip(student, deptId, isDragging: true),
       ),
       child: _studentChip(student, deptId),
@@ -90,12 +94,12 @@ class _DepartmentManagementScreenState extends State<DepartmentManagementScreen>
 
   Widget _studentChip(Map<String, dynamic> student, String deptId, {bool isDragging = false}) {
     return Container(
-      margin: const EdgeInsets.all(6),
-      padding: const EdgeInsets.all(8),
+      margin: const EdgeInsets.all(kSpaceSm),
+      padding: const EdgeInsets.all(kSpaceSm),
       decoration: BoxDecoration(
-        color: isDragging ? Colors.grey.withOpacity(0.3) : kSurface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: kBorder),
+        color: isDragging ? Colors.grey.withValues(alpha: 0.3) : kSurface,
+        borderRadius: BorderRadius.circular(kRadiusMd),
+        border: Border.all(color: kDivider),
         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
       ),
       child: Column(
@@ -105,18 +109,18 @@ class _DepartmentManagementScreenState extends State<DepartmentManagementScreen>
           Row(
             children: [
               CircleAvatar(
-                radius: 14,
-                backgroundColor: kPrimary.withOpacity(0.2),
+                radius: 16,
+                backgroundColor: kPrimary.withValues(alpha: 0.2),
                 child: Text(
                   (student['displayName'] ?? '?').toString().substring(0, 1).toUpperCase(),
-                  style: const TextStyle(color: kPrimary, fontWeight: FontWeight.bold, fontSize: 12),
+                  style: const TextStyle(color: kPrimary, fontWeight: FontWeight.bold, fontSize: 13),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: kSpaceSm),
               Expanded(
                 child: Text(
                   student['displayName'] ?? 'Unknown',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -127,8 +131,10 @@ class _DepartmentManagementScreenState extends State<DepartmentManagementScreen>
             ],
           ),
           if (student['rollNumber'] != null)
-            Text(student['rollNumber'],
-                style: const TextStyle(fontSize: 10, color: kTextSecondary)),
+            Text(
+              student['rollNumber'],
+              style: const TextStyle(fontSize: 11, color: kTextSecondary),
+            ),
         ],
       ),
     );
@@ -139,8 +145,8 @@ class _DepartmentManagementScreenState extends State<DepartmentManagementScreen>
     final students = _deptStudents[deptId] ?? [];
     return Expanded(
       child: DragTarget<Map<String, dynamic>>(
-        onAccept: (student) {
-          // Remove from previous department
+        onAcceptWithDetails: (details) {
+          final student = details.data;
           _deptStudents.forEach((dId, studs) {
             studs.removeWhere((s) => s['id'] == student['id']);
           });
@@ -149,10 +155,10 @@ class _DepartmentManagementScreenState extends State<DepartmentManagementScreen>
         builder: (context, candidateData, rejectedData) {
           return Container(
             decoration: BoxDecoration(
-              color: (candidateData.isNotEmpty ? kPrimary : kSurface).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              color: (candidateData.isNotEmpty ? kPrimary : kSurface).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(kRadiusMd),
               border: Border.all(
-                color: candidateData.isNotEmpty ? kPrimary : kBorder,
+                color: candidateData.isNotEmpty ? kPrimary : kDivider,
                 width: candidateData.isNotEmpty ? 2 : 1,
               ),
             ),
@@ -161,30 +167,39 @@ class _DepartmentManagementScreenState extends State<DepartmentManagementScreen>
               children: [
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(kSpaceMd),
                   decoration: BoxDecoration(
                     color: kPrimary,
-                    borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(kRadiusMd),
+                      topRight: Radius.circular(kRadiusMd),
+                    ),
                   ),
                   child: Column(
                     children: [
-                      Text(dept['name'] ?? 'Department',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                      const SizedBox(height: 4),
-                      Text(dept['code'] ?? '',
-                          style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                      Text(
+                        dept['name'] ?? 'Department',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
+                      ),
+                      const SizedBox(height: kSpaceXs),
+                      Text(
+                        dept['code'] ?? '',
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
                     ],
                   ),
                 ),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(kSpaceSm),
                     children: [
                       ...students.map((s) => _buildStudentChip(s, deptId)),
                       if (students.isEmpty)
                         const Center(
-                          child: Text('Drag students here',
-                              style: TextStyle(color: kTextSecondary, fontStyle: FontStyle.italic)),
+                          child: Text(
+                            'Drag students here',
+                            style: TextStyle(color: kTextSecondary, fontStyle: FontStyle.italic),
+                          ),
                         ),
                     ],
                   ),
@@ -200,51 +215,88 @@ class _DepartmentManagementScreenState extends State<DepartmentManagementScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: kBackground,
       appBar: AppBar(
         title: const Text('Department Management'),
-        centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: kTextPrimary,
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // Stats
                 Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
+                  padding: const EdgeInsets.all(kSpaceLg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(child: StatCard(title: 'Departments', value: _departments.length, icon: Icons.business, color: kPrimary)),
-                      const SizedBox(width: 12),
-                      Expanded(child: StatCard(title: 'Students', value: _allStudents.length, icon: Icons.people, color: kAccent)),
+                      Text(
+                        'Departments',
+                        style: context.h3.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: kTextPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: kSpaceXs),
+                      Text(
+                        'Drag students between departments to enroll them',
+                        style: context.body2.copyWith(color: kTextSecondary),
+                      ),
+                      const SizedBox(height: kSpaceLg),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: StatCard(
+                              title: 'Departments',
+                              value: _departments.length,
+                              icon: Icons.business,
+                              color: kPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: kSpaceSm),
+                          Expanded(
+                            child: StatCard(
+                              title: 'Students',
+                              value: _allStudents.length,
+                              icon: Icons.people,
+                              color: kAccent,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
-                // Instructions
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Text('Drag students between departments to enroll them.',
-                      style: TextStyle(fontStyle: FontStyle.italic, color: kTextSecondary)),
-                ),
-                const SizedBox(height: 8),
-                // Department columns with drag-and-drop
                 Expanded(
                   child: Row(
                     children: _departments.map((d) => _buildDepartmentColumn(d)).toList(),
                   ),
                 ),
-                // Unassigned students at bottom
                 if (_allStudents.isNotEmpty)
-                  SizedBox(
-                    height: 120,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.all(16),
+                  Container(
+                    height: 130,
+                    padding: const EdgeInsets.all(kSpaceLg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Unassigned:', style: TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 8),
-                        ..._allStudents.where((s) {
-                          return !_deptStudents.values.any((list) => list.any((x) => x['id'] == s['id']));
-                        }).map((s) => _buildStudentChip(s, 'unassigned')),
+                        const Text(
+                          'Unassigned',
+                          style: TextStyle(fontWeight: FontWeight.w800, color: kTextPrimary, fontSize: 14),
+                        ),
+                        const SizedBox(height: kSpaceSm),
+                        SizedBox(
+                          height: 80,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              ..._allStudents.where((s) {
+                                return !_deptStudents.values.any((list) => list.any((x) => x['id'] == s['id']));
+                              }).map((s) => _buildStudentChip(s, 'unassigned')),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),

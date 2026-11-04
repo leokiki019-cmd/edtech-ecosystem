@@ -1,17 +1,17 @@
+import 'package:edtech_app/auth/auth_provider.dart';
 import 'package:edtech_app/models/calendar_event.dart';
 import 'package:edtech_app/models/course.dart';
-import 'package:edtech_app/auth/auth_provider.dart';
 import 'package:edtech_app/services/api_service.dart';
 import 'package:edtech_app/theme.dart';
+import 'package:edtech_app/widgets/bounce_tap.dart';
+import 'package:edtech_app/widgets/deadline_card.dart';
+import 'package:edtech_app/widgets/floating_shapes.dart';
+import 'package:edtech_app/widgets/lively_card.dart';
+import 'package:edtech_app/widgets/responsive_grid.dart';
+import 'package:edtech_app/widgets/skeleton_loader.dart';
+import 'package:edtech_app/widgets/staggered_reveal.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../widgets/bounce_tap.dart';
-import '../widgets/deadline_card.dart';
-import '../widgets/floating_shapes.dart';
-import '../widgets/lively_card.dart';
-import '../widgets/responsive_grid.dart';
-import '../widgets/skeleton_loader.dart';
-import '../widgets/staggered_reveal.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -85,10 +85,10 @@ class _DashboardScreenState extends State<DashboardScreen>
         color: kPrimary,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(kSpaceLg),
           children: [
             const _GreetingCard(),
-            const SizedBox(height: 24),
+            const SizedBox(height: kSpaceXl),
             if (_loading)
               const _StatSkeletons()
             else
@@ -108,21 +108,21 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ),
                 ],
               ),
-            const SizedBox(height: 28),
+            const SizedBox(height: kSpaceXl),
             Row(
               children: [
                 Text(
                   'Upcoming deadlines',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: kTextPrimary,
-                      ),
+                  style: context.h4.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: kTextPrimary,
+                  ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: kSpaceXs),
                 const Icon(Icons.waving_hand_rounded, size: 18, color: kAccent),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: kSpaceMd),
             if (_loading)
               const SkeletonCard()
             else if (_error != null)
@@ -133,7 +133,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               StaggeredReveal(
                 childCount: _deadlines.length,
                 itemBuilder: (context, index) => Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.only(bottom: kSpaceMd),
                   child: DeadlineCard(event: _deadlines[index]),
                 ),
               ),
@@ -164,12 +164,11 @@ class _GreetingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
-    final term = user?.courseIds.isNotEmpty == true ? 'Fall 2026' : 'Welcome';
-    return LivelyCard(
-      gradient: candyGradient,
-      child: FloatingShapes(
+    return FloatingShapes(
+      child: LivelyCard(
+        gradient: candyGradient,
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(kSpaceXl),
           child: Row(
             children: [
               Expanded(
@@ -178,49 +177,49 @@ class _GreetingCard extends StatelessWidget {
                   children: [
                     Text(
                       '${_greeting()} ${_emoji()}',
-                      style: const TextStyle(
+                      style: context.body2.copyWith(
                         color: Colors.white70,
                         fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: kSpaceXs),
                     Text(
                       user?.displayName ?? 'Student',
-                      style: const TextStyle(
+                      style: context.h4.copyWith(
                         color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 30,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: kSpaceSm),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(30),
                       ),
                       child: Text(
-                        term,
+                        user?.courseIds.isNotEmpty == true ? 'Fall 2026' : 'Welcome',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: kSpaceMd),
               BounceTap(
                 child: Container(
-                  width: 68,
-                  height: 68,
+                  width: 76,
+                  height: 76,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(kRadiusMd),
                   ),
-                  child: const Center(child: Text('🎓', style: TextStyle(fontSize: 34))),
+                  child: const Center(child: Text('🎓', style: TextStyle(fontSize: 38))),
                 ),
               ),
             ],
@@ -248,63 +247,47 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return BounceTap(
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(kSpaceMd),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.white, tintOf(color, 0.16)],
+            colors: [Colors.white, tintOf(color, 0.08)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
-          border: Border.all(color: tintOf(color, 0.22)),
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.20),
-              blurRadius: 22,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          border: Border.all(color: tintOf(color, 0.18)),
+          borderRadius: BorderRadius.circular(kRadiusMd),
+          boxShadow: [cardShadow(color)],
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                gradient: livelyGradient(color, shadeOf(color, 0.15)),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Icon(icon, color: Colors.white, size: 28),
+              padding: const EdgeInsets.all(kSpaceSm),
+              decoration: iconBubble(color),
+              child: Icon(icon, color: Colors.white, size: 26),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: kSpaceMd),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      fontSize: 13,
+                    style: context.caption.copyWith(
                       color: kTextSecondary,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: kSpaceXs),
                   TweenAnimationBuilder<double>(
                     tween: Tween(begin: 0, end: value.toDouble()),
                     duration: const Duration(milliseconds: 800),
                     curve: Curves.easeOutCubic,
                     builder: (context, v, _) => Text(
                       v.round().toString(),
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
+                      style: context.h5.copyWith(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 34,
                         color: kTextPrimary,
                       ),
                     ),
@@ -327,22 +310,22 @@ class _StatSkeletons extends StatelessWidget {
     return ResponsiveGrid(
       items: [
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(kSpaceMd),
           decoration: BoxDecoration(
             color: kCard,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(kRadiusMd),
           ),
           child: const Row(
             children: [
               SkeletonBox(width: 52, height: 52, borderRadius: BorderRadius.all(Radius.circular(16))),
-              SizedBox(width: 20),
+              SizedBox(width: kSpaceMd),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SkeletonBox(width: 110, height: 12),
-                    SizedBox(height: 8),
-                    SkeletonBox(width: 48, height: 26),
+                    SkeletonBox(width: 120, height: 14),
+                    SizedBox(height: kSpaceXs),
+                    SkeletonBox(width: 56, height: 30),
                   ],
                 ),
               ),
@@ -350,22 +333,22 @@ class _StatSkeletons extends StatelessWidget {
           ),
         ),
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(kSpaceMd),
           decoration: BoxDecoration(
             color: kCard,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(kRadiusMd),
           ),
           child: const Row(
             children: [
               SkeletonBox(width: 52, height: 52, borderRadius: BorderRadius.all(Radius.circular(16))),
-              SizedBox(width: 20),
+              SizedBox(width: kSpaceMd),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SkeletonBox(width: 80, height: 12),
-                    SizedBox(height: 8),
-                    SkeletonBox(width: 40, height: 26),
+                    SkeletonBox(width: 100, height: 14),
+                    SizedBox(height: kSpaceXs),
+                    SkeletonBox(width: 48, height: 30),
                   ],
                 ),
               ),
@@ -383,29 +366,32 @@ class _EmptyDeadlines extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(kSpaceXl),
       decoration: BoxDecoration(
         color: kCard,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: kBorder),
+        borderRadius: BorderRadius.circular(kRadiusMd),
+        border: Border.all(color: kDivider),
       ),
-      child: const Column(
+      child: Column(
         children: [
-          Text('🎈', style: TextStyle(fontSize: 48)),
-          SizedBox(height: 12),
+          const Text('🎈', style: TextStyle(fontSize: 56)),
+          const SizedBox(height: kSpaceMd),
           Text(
             'All clear!',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
+            style: context.h5.copyWith(
+              fontWeight: FontWeight.w900,
               color: kTextPrimary,
             ),
           ),
-          SizedBox(height: 6),
+          const SizedBox(height: kSpaceSm),
           Text(
             'No upcoming deadlines. Enjoy the free time!',
             textAlign: TextAlign.center,
-            style: TextStyle(color: kTextSecondary, fontSize: 13, height: 1.5),
+            style: context.body2.copyWith(
+              color: kTextSecondary,
+              fontSize: 14,
+              height: 1.7,
+            ),
           ),
         ],
       ),
@@ -425,14 +411,17 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('😵', style: TextStyle(fontSize: 44)),
-          const SizedBox(height: 12),
+          const Text('😵', style: TextStyle(fontSize: 52)),
+          const SizedBox(height: kSpaceMd),
           Text(
             error,
-            style: const TextStyle(color: kTextSecondary, fontSize: 13),
+            style: context.body2.copyWith(
+              color: kTextSecondary,
+              fontSize: 13,
+            ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: kSpaceLg),
           FilledButton.tonalIcon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded, size: 18),

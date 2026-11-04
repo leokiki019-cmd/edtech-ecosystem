@@ -43,9 +43,7 @@ class _CalendarScreenState extends State<CalendarScreen>
       final departments = await ApiService.instance.getDepartments();
       if (!mounted) return;
       setState(() => _departments = departments);
-    } catch (_) {
-      // Department filtering is optional; the calendar still renders.
-    }
+    } catch (_) {}
   }
 
   Future<void> _load() async {
@@ -83,10 +81,13 @@ class _CalendarScreenState extends State<CalendarScreen>
   Future<void> _showEventDialog({CalendarEvent? event}) async {
     final draft = await showDialog<_EventDraft>(
       context: context,
-      builder: (_) => _EventEditorDialog(
-        event: event,
-        departments: _departments,
-        initialDepartmentId: _selectedDepartmentId,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusXl)),
+        child: _EventEditorDialog(
+          event: event,
+          departments: _departments,
+          initialDepartmentId: _selectedDepartmentId,
+        ),
       ),
     );
     if (draft == null || !mounted) return;
@@ -120,6 +121,9 @@ class _CalendarScreenState extends State<CalendarScreen>
         SnackBar(
           content: Text(draft.delete ? 'Event deleted' : 'Calendar updated'),
           backgroundColor: kPrimary,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(kSpaceMd),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMd)),
         ),
       );
     } catch (e) {
@@ -128,6 +132,9 @@ class _CalendarScreenState extends State<CalendarScreen>
         SnackBar(
           content: Text('Could not save event: $e'),
           backgroundColor: kError,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(kSpaceMd),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMd)),
         ),
       );
     } finally {
@@ -152,22 +159,25 @@ class _CalendarScreenState extends State<CalendarScreen>
         color: kPrimary,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(kSpaceLg),
           children: [
             _buildHeader(isAdmin),
-            const SizedBox(height: 12),
+            const SizedBox(height: kSpaceMd),
             _buildDepartmentFilter(),
             if (isAdmin)
               Padding(
-                padding: const EdgeInsets.only(top: 10),
+                padding: const EdgeInsets.only(top: kSpaceSm),
                 child: Text(
                   _saving
                       ? 'Saving changes…'
                       : 'Admin: add events, or tap an event to edit or delete it.',
-                  style: const TextStyle(fontSize: 12, color: kTextSecondary),
+                  style: context.body2.copyWith(
+                    fontSize: 12,
+                    color: kTextSecondary,
+                  ),
                 ),
               ),
-            const SizedBox(height: 20),
+            const SizedBox(height: kSpaceLg),
             if (_loading)
               const Column(
                 children: [SkeletonCard(), SkeletonCard(), SkeletonCard()],
@@ -176,29 +186,28 @@ class _CalendarScreenState extends State<CalendarScreen>
               _ErrorState(error: _error!, onRetry: _load)
             else if (_events.isEmpty)
               Container(
-                padding: const EdgeInsets.all(32),
+                padding: const EdgeInsets.all(kSpaceXxl),
                 decoration: BoxDecoration(
                   color: kCard,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: kBorder),
+                  borderRadius: BorderRadius.circular(kRadiusMd),
+                  border: Border.all(color: kDivider),
                 ),
-                child: const Column(
+                child: Column(
                   children: [
-                    Text('🗓️', style: TextStyle(fontSize: 48)),
-                    SizedBox(height: 12),
+                    const Text('🗓️', style: TextStyle(fontSize: 56)),
+                    const SizedBox(height: kSpaceMd),
                     Text(
                       'Nothing scheduled',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
+                      style: context.h4.copyWith(
+                        fontWeight: FontWeight.w900,
                         color: kTextPrimary,
                       ),
                     ),
-                    SizedBox(height: 6),
+                    const SizedBox(height: kSpaceSm),
                     Text(
                       'Your calendar is wide open!',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: kTextSecondary, fontSize: 13),
+                      style: context.body2.copyWith(color: kTextSecondary, fontSize: 14, height: 1.7),
                     ),
                   ],
                 ),
@@ -207,7 +216,7 @@ class _CalendarScreenState extends State<CalendarScreen>
               StaggeredReveal(
                 childCount: _events.length,
                 itemBuilder: (context, index) => Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.only(bottom: kSpaceMd),
                   child: DeadlineCard(
                     event: _events[index],
                     onTap: isAdmin
@@ -227,10 +236,10 @@ class _CalendarScreenState extends State<CalendarScreen>
       children: [
         const Expanded(
           child: Text(
-            'Calendar 📅',
+            'Calendar',
             style: TextStyle(
               fontSize: 20,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w900,
               color: kTextPrimary,
             ),
           ),
@@ -246,17 +255,16 @@ class _CalendarScreenState extends State<CalendarScreen>
         Tooltip(
           message: 'Refresh calendar',
           child: IconButton(
-            icon: const Icon(
-              Icons.refresh_rounded,
-              color: kTextSecondary,
-              size: 20,
-            ),
+            icon: const Icon(Icons.refresh_rounded, color: kTextSecondary, size: 20),
             onPressed: () {
               _load();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Refreshing calendar'),
+                SnackBar(
+                  content: const Text('Refreshing calendar'),
                   backgroundColor: kPrimary,
+                  behavior: SnackBarBehavior.floating,
+                  margin: const EdgeInsets.all(kSpaceMd),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMd)),
                 ),
               );
             },
@@ -267,25 +275,34 @@ class _CalendarScreenState extends State<CalendarScreen>
   }
 
   Widget _buildDepartmentFilter() {
-    return DropdownButtonFormField<String>(
-      value: _selectedDepartmentId ?? '',
-      isDense: true,
-      decoration: const InputDecoration(
-        labelText: 'Department calendar',
-        prefixIcon: Icon(Icons.business_rounded, size: 18),
+    return Container(
+      decoration: BoxDecoration(
+        color: kSurface,
+        borderRadius: BorderRadius.circular(kRadiusMd),
+        border: Border.all(color: kDivider),
       ),
-      items: [
-        const DropdownMenuItem(value: '', child: Text('All departments')),
-        ..._departments.map(
-          (department) => DropdownMenuItem(
-            value: department['id']?.toString() ?? '',
-            child: Text(
-              '${department['code'] ?? ''} · ${department['name'] ?? ''}',
+      child: DropdownButtonFormField<String>(
+        initialValue: _selectedDepartmentId ?? '',
+        isDense: true,
+        decoration: const InputDecoration(
+          labelText: 'Department calendar',
+          prefixIcon: Icon(Icons.business_rounded, size: 18),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: kSpaceMd, vertical: kSpaceMd),
+        ),
+        items: [
+          const DropdownMenuItem(value: '', child: Text('All departments')),
+          ..._departments.map(
+            (department) => DropdownMenuItem(
+              value: department['id']?.toString() ?? '',
+              child: Text(
+                '${department['code'] ?? ''} · ${department['name'] ?? ''}',
+              ),
             ),
           ),
-        ),
-      ],
-      onChanged: (value) => _pickDepartment(value),
+        ],
+        onChanged: (value) => _pickDepartment(value),
+      ),
     );
   }
 }
@@ -395,115 +412,134 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.event == null ? 'Add calendar event' : 'Edit event'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _titleCtrl,
-              decoration: const InputDecoration(labelText: 'Event title'),
-              onChanged: (_) => setState(() {}),
+    return Padding(
+      padding: const EdgeInsets.all(kSpaceLg),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.event == null ? 'Add calendar event' : 'Edit event',
+            style: context.h4.copyWith(
+              fontWeight: FontWeight.w900,
+              color: kTextPrimary,
             ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _kind,
-              decoration: const InputDecoration(labelText: 'Event type'),
-              items: const [
-                DropdownMenuItem(value: 'class', child: Text('Class')),
-                DropdownMenuItem(value: 'assignment', child: Text('Assignment')),
-                DropdownMenuItem(value: 'quiz', child: Text('Quiz / exam')),
-                DropdownMenuItem(
-                  value: 'institution',
-                  child: Text('Institution event'),
-                ),
-              ],
-              onChanged: (value) => setState(() => _kind = value ?? 'class'),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _departmentId ?? '',
-              decoration: const InputDecoration(labelText: 'Department'),
-              items: [
-                const DropdownMenuItem(
-                  value: '',
-                  child: Text('Institution-wide'),
-                ),
-                ...widget.departments.map(
-                  (department) => DropdownMenuItem(
-                    value: department['id']?.toString() ?? '',
-                    child: Text(
-                      '${department['code'] ?? ''} · '
-                      '${department['name'] ?? ''}',
-                    ),
-                  ),
-                ),
-              ],
-              onChanged: (value) => setState(
-                () => _departmentId =
-                    (value == null || value.isEmpty) ? null : value,
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.event_rounded, size: 18),
-                label: Text('Starts: ${_fmt(_startsAt)}'),
-                onPressed: () async {
-                  final picked = await _pickDateTime(_startsAt);
-                  if (picked != null) setState(() => _startsAt = picked);
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.schedule_rounded, size: 18),
-                    label: Text(
-                      _endsAt == null
-                          ? 'Add end time (optional)'
-                          : 'Ends: ${_fmt(_endsAt!)}',
-                    ),
-                    onPressed: () async {
-                      final picked = await _pickDateTime(
-                        _endsAt ??
-                            _startsAt.add(const Duration(hours: 1)),
-                      );
-                      if (picked != null) setState(() => _endsAt = picked);
-                    },
-                  ),
-                ),
-                if (_endsAt != null)
-                  IconButton(
-                    tooltip: 'Clear end time',
-                    icon: const Icon(Icons.clear_rounded, size: 18),
-                    onPressed: () => setState(() => _endsAt = null),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        if (widget.event != null)
-          TextButton(
-            onPressed: () => _submit(delete: true),
-            child: const Text('Delete', style: TextStyle(color: kError)),
           ),
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed:
-              _titleCtrl.text.trim().isEmpty ? null : () => _submit(),
-          child: Text(widget.event == null ? 'Create' : 'Save'),
-        ),
-      ],
+          const SizedBox(height: kSpaceXl),
+          TextField(
+            controller: _titleCtrl,
+            decoration: const InputDecoration(labelText: 'Event title'),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: kSpaceMd),
+          DropdownButtonFormField<String>(
+            initialValue: _kind,
+            decoration: const InputDecoration(labelText: 'Event type'),
+            items: const [
+              DropdownMenuItem(value: 'class', child: Text('Class')),
+              DropdownMenuItem(value: 'assignment', child: Text('Assignment')),
+              DropdownMenuItem(value: 'quiz', child: Text('Quiz / exam')),
+              DropdownMenuItem(
+                value: 'institution',
+                child: Text('Institution event'),
+              ),
+            ],
+            onChanged: (value) => setState(() => _kind = value ?? 'class'),
+          ),
+          const SizedBox(height: kSpaceMd),
+          DropdownButtonFormField<String>(
+            initialValue: _departmentId ?? '',
+            decoration: const InputDecoration(labelText: 'Department'),
+            items: [
+              const DropdownMenuItem(
+                value: '',
+                child: Text('Institution-wide'),
+              ),
+              ...widget.departments.map(
+                (department) => DropdownMenuItem(
+                  value: department['id']?.toString() ?? '',
+                  child: Text(
+                    '${department['code'] ?? ''} · '
+                    '${department['name'] ?? ''}',
+                  ),
+                ),
+              ),
+            ],
+            onChanged: (value) => setState(
+              () => _departmentId =
+                  (value == null || value.isEmpty) ? null : value,
+            ),
+          ),
+          const SizedBox(height: kSpaceLg),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.event_rounded, size: 18),
+              label: Text('Starts: ${_fmt(_startsAt)}'),
+              onPressed: () async {
+                final picked = await _pickDateTime(_startsAt);
+                if (picked != null) setState(() => _startsAt = picked);
+              },
+            ),
+          ),
+          const SizedBox(height: kSpaceSm),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.schedule_rounded, size: 18),
+                  label: Text(
+                    _endsAt == null
+                        ? 'Add end time (optional)'
+                        : 'Ends: ${_fmt(_endsAt!)}',
+                  ),
+                  onPressed: () async {
+                    final picked = await _pickDateTime(
+                      _endsAt ??
+                          _startsAt.add(const Duration(hours: 1)),
+                    );
+                    if (picked != null) setState(() => _endsAt = picked);
+                  },
+                ),
+              ),
+              if (_endsAt != null)
+                IconButton(
+                  tooltip: 'Clear end time',
+                  icon: const Icon(Icons.clear_rounded, size: 18),
+                  onPressed: () => setState(() => _endsAt = null),
+                ),
+            ],
+          ),
+          const SizedBox(height: kSpaceXl),
+          Row(
+            children: [
+              if (widget.event != null)
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => _submit(delete: true),
+                    child: const Text('Delete', style: TextStyle(color: kError)),
+                  ),
+                ),
+              if (widget.event != null)
+                const SizedBox(width: kSpaceSm),
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+              ),
+              const SizedBox(width: kSpaceSm),
+              Expanded(
+                child: FilledButton(
+                  onPressed:
+                      _titleCtrl.text.trim().isEmpty ? null : () => _submit(),
+                  child: Text(widget.event == null ? 'Create' : 'Save'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -520,14 +556,14 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('😵', style: TextStyle(fontSize: 44)),
-          const SizedBox(height: 12),
+          const Text('😵', style: TextStyle(fontSize: 52)),
+          const SizedBox(height: kSpaceMd),
           Text(
             error,
-            style: const TextStyle(color: kTextSecondary, fontSize: 13),
+            style: context.body2.copyWith(color: kTextSecondary, fontSize: 13),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: kSpaceLg),
           FilledButton.tonalIcon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded, size: 18),

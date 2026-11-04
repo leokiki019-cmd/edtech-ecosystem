@@ -1,3 +1,4 @@
+import 'package:edtech_app/theme.dart';
 import 'package:flutter/material.dart';
 
 class ResponsiveGrid extends StatelessWidget {
@@ -11,15 +12,15 @@ class ResponsiveGrid extends StatelessWidget {
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 600;
         final crossAxisCount = isMobile ? 1 : 3;
-        final childAspectRatio = isMobile ? 2.2 : 1.8;
+        final childAspectRatio = isMobile ? 2.6 : 1.9;
 
         return GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+            crossAxisSpacing: kSpaceMd,
+            mainAxisSpacing: kSpaceMd,
             childAspectRatio: childAspectRatio,
           ),
           itemCount: items.length,

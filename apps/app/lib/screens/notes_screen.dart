@@ -1,10 +1,10 @@
 import 'package:edtech_app/models/course.dart';
 import 'package:edtech_app/services/api_service.dart';
 import 'package:edtech_app/theme.dart';
+import 'package:edtech_app/widgets/bounce_tap.dart';
 import 'package:edtech_app/widgets/stat_card.dart';
 import 'package:flutter/material.dart';
 
-/// Teacher notes screen: create and view notes by book name + course code.
 class NotesScreen extends StatefulWidget {
   const NotesScreen({super.key});
 
@@ -32,9 +32,11 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 
   Future<void> _loadData() async {
+    setState(() => _loading = true);
     final api = ApiService();
     final courses = await api.getCourses();
     final notes = await api.getTeacherNotes();
+    if (!mounted) return;
     setState(() {
       _courses = courses;
       _notes = notes.map((n) => n.toJson()).toList();
@@ -70,117 +72,210 @@ class _NotesScreenState extends State<NotesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Teacher Notes'),
-        centerTitle: true,
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showCreateDialog,
-        child: const Icon(Icons.add),
-      ),
+      backgroundColor: kBackground,
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // Stats
                 Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
+                  padding: const EdgeInsets.all(kSpaceLg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: StatCard(
-                          title: 'Total Notes',
-                          value: _notes.length,
-                          icon: Icons.note,
-                          color: kPrimary,
+                      Text(
+                        'Teacher Notes',
+                        style: context.h3.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: kTextPrimary,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: StatCard(
-                          title: 'Courses',
-                          value: _courses.length,
-                          icon: Icons.school,
-                          color: kAccent,
-                        ),
+                      const SizedBox(height: kSpaceXs),
+                      Text(
+                        'Organise notes by book and course code',
+                        style: context.body2.copyWith(color: kTextSecondary),
+                      ),
+                      const SizedBox(height: kSpaceLg),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: StatCard(
+                              title: 'Total Notes',
+                              value: _notes.length,
+                              icon: Icons.note,
+                              color: kPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: kSpaceSm),
+                          Expanded(
+                            child: StatCard(
+                              title: 'Courses',
+                              value: _courses.length,
+                              icon: Icons.school,
+                              color: kAccent,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                // Filter
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
+                  padding: const EdgeInsets.symmetric(horizontal: kSpaceLg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedCourseId,
-                          decoration: const InputDecoration(labelText: 'Filter by Course'),
-                          items: [
-                            const DropdownMenuItem(value: '', child: Text('All Courses')),
-                            ..._courses.map((c) => DropdownMenuItem(
-                                  value: c.id,
-                                  child: Text('${c.code} - ${c.title}'),
-                                )),
-                          ],
-                          onChanged: (v) => setState(() => _selectedCourseId = v == '' ? null : v),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: TextEditingController(text: _filterCourseCode),
-                          decoration: const InputDecoration(labelText: 'Course Code (e.g. CIT-301)'),
-                          onChanged: (v) => _filterCourseCode = v,
-                          onSubmitted: (_) => _loadData(),
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedCourseId,
+                              decoration: const InputDecoration(
+                                labelText: 'Filter by Course',
+                                hintText: 'All courses',
+                              ),
+                              items: [
+                                const DropdownMenuItem(
+                                  value: '',
+                                  child: Text('All Courses'),
+                                ),
+                                ..._courses.map((c) => DropdownMenuItem(
+                                      value: c.id,
+                                      child: Text('${c.code} - ${c.title}'),
+                                    )),
+                              ],
+                              onChanged: (v) => setState(() => _selectedCourseId = v == '' ? null : v),
+                            ),
+                          ),
+                          const SizedBox(width: kSpaceSm),
+                          SizedBox(
+                            width: 200,
+                            child: TextField(
+                              controller: TextEditingController(text: _filterCourseCode),
+                              decoration: const InputDecoration(
+                                labelText: 'Course Code',
+                                hintText: 'e.g. CIT-301',
+                              ),
+                              onChanged: (v) => _filterCourseCode = v,
+                              onSubmitted: (_) => _loadData(),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                // Notes list
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _notes.length,
-                    itemBuilder: (context, index) {
-                      final n = _notes[index];
-                      // Apply filters
-                      if (_selectedCourseId != null && n['courseId'] != _selectedCourseId) return const SizedBox.shrink();
-                      if (_filterCourseCode.isNotEmpty &&
-                          (n['courseCode'] as String?)?.toLowerCase().contains(_filterCourseCode.toLowerCase()) != true)
-                        return const SizedBox.shrink();
-                      return Card(
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: kPrimary.withOpacity(0.2),
-                            child: Text(n['courseCode']?.toString().substring(0, 3).toUpperCase() ?? '?',
-                                style: const TextStyle(color: kPrimary, fontWeight: FontWeight.bold)),
+                const SizedBox(height: kSpaceLg),
+                if (_notes.isEmpty)
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('📝', style: TextStyle(fontSize: 56)),
+                          const SizedBox(height: kSpaceMd),
+                          Text(
+                            'No notes yet',
+                            style: context.h4.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: kTextPrimary,
+                            ),
                           ),
-                          title: Text(n['title'] ?? 'Untitled',
-                              style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Book: ${n['bookName'] ?? ''}', style: const TextStyle(fontSize: 12)),
-                              Text('Code: ${n['courseCode'] ?? ''}',
-                                  style: const TextStyle(fontSize: 12, color: kTextSecondary)),
-                              Text('${n['createdAt'] ?? ''}',
-                                  style: const TextStyle(fontSize: 10, color: kTextSecondary)),
-                            ],
+                          const SizedBox(height: kSpaceSm),
+                          Text(
+                            'Create your first note to get started.',
+                            textAlign: TextAlign.center,
+                            style: context.body2.copyWith(color: kTextSecondary, fontSize: 14),
                           ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline, color: kError),
-                            onPressed: () => _deleteNote(n['id']),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(kSpaceLg),
+                      itemCount: _notes.length,
+                      itemBuilder: (context, index) {
+                        final n = _notes[index];
+                        if (_selectedCourseId != null && n['courseId'] != _selectedCourseId) return const SizedBox.shrink();
+                        if (_filterCourseCode.isNotEmpty &&
+                            (n['courseCode'] as String?)?.toLowerCase().contains(_filterCourseCode.toLowerCase()) != true)
+                          return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: kSpaceMd),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: kCard,
+                              borderRadius: BorderRadius.circular(kRadiusMd),
+                              border: Border.all(color: kDivider),
+                              boxShadow: [cardShadow(kTextSecondary)],
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(kSpaceMd),
+                              leading: CircleAvatar(
+                                backgroundColor: kPrimary.withValues(alpha: 0.15),
+                                child: Text(
+                                  n['courseCode']?.toString().substring(0, 3).toUpperCase() ?? '?',
+                                  style: const TextStyle(color: kPrimary, fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                              ),
+                              title: Text(
+                                n['title'] ?? 'Untitled',
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: kTextPrimary),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: kSpaceXs),
+                                  Text(
+                                    'Book: ${n['bookName'] ?? ''}',
+                                    style: const TextStyle(fontSize: 13, color: kTextBody),
+                                  ),
+                                  const SizedBox(height: kSpaceXs),
+                                  Text(
+                                    'Code: ${n['courseCode'] ?? ''}',
+                                    style: const TextStyle(fontSize: 12, color: kTextSecondary),
+                                  ),
+                                  const SizedBox(height: kSpaceXs),
+                                  Text(
+                                    '${n['createdAt'] ?? ''}',
+                                    style: const TextStyle(fontSize: 11, color: kTextSecondary),
+                                  ),
+                                ],
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete_outline, color: kError),
+                                onPressed: () => _deleteNote(n['id']),
+                              ),
+                              onTap: () => _viewNote(n),
+                            ),
                           ),
-                          onTap: () => _viewNote(n),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
-                ),
               ],
             ),
+            floatingActionButton: BounceTap(
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: candyGradient,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: kPrimary.withValues(alpha: 0.4),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: const Center(child: Icon(Icons.add_rounded, color: Colors.white, size: 28)),
+        ),
+        onTap: _showCreateDialog,
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
@@ -191,12 +286,22 @@ class _NotesScreenState extends State<NotesScreen> {
     _contentCtrl.clear();
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Create Note'),
-        content: SingleChildScrollView(
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusXl)),
+        child: Padding(
+          padding: const EdgeInsets.all(kSpaceLg),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                'Create Note',
+                style: context.h4.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: kTextPrimary,
+                ),
+              ),
+              const SizedBox(height: kSpaceLg),
               DropdownButtonFormField<String>(
                 value: _selectedCourseId,
                 decoration: const InputDecoration(labelText: 'Course'),
@@ -209,37 +314,48 @@ class _NotesScreenState extends State<NotesScreen> {
                 ],
                 onChanged: (v) => setState(() => _selectedCourseId = v == '' ? null : v),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: kSpaceMd),
               TextField(
                 controller: _bookNameCtrl,
                 decoration: const InputDecoration(labelText: 'Book Name (e.g. Interaction Design)'),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: kSpaceMd),
               TextField(
                 controller: _courseCodeCtrl,
                 decoration: const InputDecoration(labelText: 'Course Code (e.g. CIT-301)'),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: kSpaceMd),
               TextField(
                 controller: _titleCtrl,
                 decoration: const InputDecoration(labelText: 'Note Title'),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: kSpaceMd),
               TextField(
                 controller: _contentCtrl,
                 decoration: const InputDecoration(labelText: 'Content'),
                 maxLines: 4,
               ),
+              const SizedBox(height: kSpaceXl),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: kSpaceSm),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _creating ? null : _createNote,
+                      child: const Text('Create'),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: _creating ? null : _createNote,
-            child: const Text('Create'),
-          ),
-        ],
       ),
     );
   }
@@ -247,28 +363,41 @@ class _NotesScreenState extends State<NotesScreen> {
   void _viewNote(Map<String, dynamic> note) {
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(note['title'] ?? 'Note'),
-        content: SingleChildScrollView(
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusXl)),
+        child: Padding(
+          padding: const EdgeInsets.all(kSpaceLg),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Book: ${note['bookName'] ?? ''}',
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text('Course Code: ${note['courseCode'] ?? ''}',
-                  style: const TextStyle(color: kTextSecondary)),
-              const SizedBox(height: 8),
+              Text(
+                note['title'] ?? 'Note',
+                style: context.h4.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: kTextPrimary,
+                ),
+              ),
+              const SizedBox(height: kSpaceMd),
+              Text(
+                'Book: ${note['bookName'] ?? ''}',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: kSpaceXs),
+              Text(
+                'Course Code: ${note['courseCode'] ?? ''}',
+                style: const TextStyle(color: kTextSecondary),
+              ),
+              const SizedBox(height: kSpaceMd),
               const Divider(),
-              const SizedBox(height: 8),
-              Text(note['content'] ?? '', style: const TextStyle(fontSize: 14, height: 1.5)),
+              const SizedBox(height: kSpaceMd),
+              Text(
+                note['content'] ?? '',
+                style: const TextStyle(fontSize: 14, height: 1.7, color: kTextBody),
+              ),
             ],
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close')),
-        ],
       ),
     );
   }

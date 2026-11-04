@@ -26,55 +26,39 @@ class StatCard extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.white, tintOf(color, 0.18)],
+            colors: [Colors.white, tintOf(color, 0.10)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
-          border: Border.all(color: tintOf(color, 0.25)),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.22),
-              blurRadius: 24,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          border: Border.all(color: tintOf(color, 0.18)),
+          borderRadius: BorderRadius.circular(kRadiusMd),
+          boxShadow: [cardShadow(color)],
         ),
         child: Stack(
           children: [
             Positioned(
-              top: -22,
-              right: -22,
+              top: -20,
+              right: -20,
               child: Container(
-                width: 80,
-                height: 80,
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: tintOf(color, 0.10),
+                  color: tintOf(color, 0.08),
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+              padding: const EdgeInsets.symmetric(vertical: kSpaceMd, horizontal: kSpaceMd),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(11),
-                    decoration: BoxDecoration(
-                      gradient: livelyGradient(color, shadeOf(color, 0.15)),
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withValues(alpha: 0.35),
-                          blurRadius: 12,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
+                    padding: const EdgeInsets.all(kSpaceSm),
+                    decoration: iconBubble(color),
                     child: Icon(icon, color: Colors.white, size: 21),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: kSpaceMd),
                   AnimatedNumber(
                     value: value,
                     style: TextStyle(
@@ -84,13 +68,13 @@ class StatCard extends StatelessWidget {
                       height: 1,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: kSpaceSm),
                   Text(
                     title,
-                    style: const TextStyle(
-                      fontSize: 11,
+                    style: context.caption.copyWith(
                       color: kTextSecondary,
                       fontWeight: FontWeight.w700,
+                      fontSize: 12,
                     ),
                   ),
                 ],

@@ -6,7 +6,6 @@ import 'package:edtech_app/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../widgets/bounce_tap.dart';
-import '../widgets/hover_scale.dart';
 import '../widgets/message_bubble.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -23,11 +22,19 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _loading = false;
   String? _error;
   final _controller = TextEditingController();
+  final _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadChannels();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadChannels() async {
@@ -36,6 +43,8 @@ class _ChatScreenState extends State<ChatScreen> {
       _channels = await ApiService.instance.getChannels('c-001');
       if (_channels.isNotEmpty) {
         await _selectChannel(_channels.first);
+      } else {
+        if (mounted) setState(() => _loading = false);
       }
     } catch (e) {
       if (!mounted) return;
@@ -55,6 +64,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     try {
       _messages = await ApiService.instance.getMessages(channel.id);
+      _scrollToBottom();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -64,6 +74,18 @@ class _ChatScreenState extends State<ChatScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Future<void> _sendMessage() async {
@@ -84,6 +106,9 @@ class _ChatScreenState extends State<ChatScreen> {
           SnackBar(
             content: Text('Failed to send: $error'),
             backgroundColor: kError,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(kSpaceMd),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMd)),
           ),
         );
       }
@@ -92,22 +117,24 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isAdmin = context.read<AuthProvider>().user?.role == 'admin';
+
     return Column(
       children: [
         if (_loading && _selected == null)
-          const LinearProgressIndicator(minHeight: 4, color: kPrimary)
+          const LinearProgressIndicator(minHeight: 3, color: kPrimary)
         else if (_error != null && _selected == null)
           Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('😵', style: TextStyle(fontSize: 44)),
-                const SizedBox(height: 12),
+                const Text('😵', style: TextStyle(fontSize: 52)),
+                const SizedBox(height: kSpaceMd),
                 Text(
                   _error!,
-                  style: const TextStyle(color: kTextSecondary, fontSize: 12),
+                  style: context.body2.copyWith(color: kTextSecondary, fontSize: 13),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: kSpaceLg),
                 FilledButton.tonalIcon(
                   onPressed: _loadChannels,
                   icon: const Icon(Icons.refresh_rounded, size: 18),
@@ -123,32 +150,33 @@ class _ChatScreenState extends State<ChatScreen> {
               children: [
                 Container(
                   color: kSurface,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: kSpaceMd, vertical: kSpaceSm),
                   child: SizedBox(
-                    height: 44,
+                    height: 46,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       itemCount: _channels.length,
                       itemBuilder: (context, index) {
                         final channel = _channels[index];
                         final isSelected = _selected?.id == channel.id;
-                        final color = kTabColors[3 % kTabColors.length];
+                        final color = kAccent;
                         return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: HoverScale(
+                          padding: const EdgeInsets.only(right: kSpaceSm),
+                          child: GestureDetector(
+                            onTap: () => _selectChannel(channel),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 240),
                               curve: Curves.easeOut,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
+                                horizontal: kSpaceMd,
+                                vertical: kSpaceSm,
                               ),
                               decoration: BoxDecoration(
                                 color: isSelected ? color : kCard,
                                 border: Border.all(
-                                  color: isSelected ? color : kBorder,
+                                  color: isSelected ? color : kDivider,
                                 ),
-                                borderRadius: BorderRadius.circular(22),
+                                borderRadius: BorderRadius.circular(kRadiusMd),
                                 boxShadow: isSelected
                                     ? [
                                         BoxShadow(
@@ -159,20 +187,13 @@ class _ChatScreenState extends State<ChatScreen> {
                                       ]
                                     : null,
                               ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: () => _selectChannel(channel),
-                                  borderRadius: BorderRadius.circular(22),
-                                  child: Center(
-                                    child: Text(
-                                      channel.name,
-                                      style: TextStyle(
-                                        color: isSelected ? Colors.white : kTextSecondary,
-                                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                                        fontSize: 13,
-                                      ),
-                                    ),
+                              child: Center(
+                                child: Text(
+                                  channel.name,
+                                  style: TextStyle(
+                                    color: isSelected ? Colors.white : kTextSecondary,
+                                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                    fontSize: 13,
                                   ),
                                 ),
                               ),
@@ -183,36 +204,54 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
                 ),
+                if (isAdmin && _selected != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: kSpaceMd),
+                    child: Text(
+                      '#${_selected!.name} • Admin can edit messages',
+                      style: context.caption.copyWith(
+                        color: kTextSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
                 Expanded(
                   child: _messages.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text('💬', style: TextStyle(fontSize: 44)),
-                              SizedBox(height: 12),
+                              const Text('💬', style: TextStyle(fontSize: 56)),
+                              const SizedBox(height: kSpaceMd),
                               Text(
                                 'No messages yet',
-                                style: TextStyle(color: kTextSecondary, fontSize: 14),
+                                style: context.h4.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                  color: kTextPrimary,
+                                ),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: kSpaceSm),
                               Text(
                                 'Say hello! 👋',
-                                style: TextStyle(color: kTextSecondary, fontSize: 12),
+                                style: context.body2.copyWith(color: kTextSecondary, fontSize: 14),
                               ),
                             ],
                           ),
                         )
                       : ListView.builder(
+                          controller: _scrollController,
                           reverse: true,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          padding: const EdgeInsets.symmetric(vertical: kSpaceMd),
                           itemCount: _messages.length,
                           itemBuilder: (context, index) {
                             final message = _messages[_messages.length - 1 - index];
                             final userId = context.watch<AuthProvider>().user?.id;
-                            return MessageBubble(
-                              message: message,
-                              isOwn: message.authorId == userId,
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: kSpaceMd),
+                              child: MessageBubble(
+                                message: message,
+                                isOwn: message.authorId == userId,
+                              ),
                             );
                           },
                         ),
@@ -221,41 +260,54 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(kSpaceMd),
           decoration: const BoxDecoration(
             color: kSurface,
-            border: Border(top: BorderSide(color: kBorder)),
+            border: Border(top: BorderSide(color: kDivider)),
           ),
           child: Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: _controller,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: 'Write a message...',
-                    border: OutlineInputBorder(),
-                    isDense: true,
+                    filled: true,
+                    fillColor: kBackground,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: kSpaceMd, vertical: kSpaceMd),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(kRadiusMd),
+                      borderSide: BorderSide(color: kDivider, width: 1),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(kRadiusMd),
+                      borderSide: BorderSide(color: kDivider, width: 1),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(kRadiusMd),
+                      borderSide: BorderSide(color: kPrimary, width: 2),
+                    ),
                   ),
                   onSubmitted: (_) => _sendMessage(),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: kSpaceSm),
               BounceTap(
                 onTap: _sendMessage,
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: livelyGradient(kPrimary, kPrimaryDark),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(kRadiusMd),
                     boxShadow: [
                       BoxShadow(
-                        color: kPrimary.withValues(alpha: 0.3),
+                        color: kPrimary.withValues(alpha: 0.30),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
                     ],
                   ),
                   child: const Padding(
-                    padding: EdgeInsets.all(14),
+                    padding: EdgeInsets.all(kSpaceMd),
                     child: Icon(
                       Icons.send_rounded,
                       color: Colors.white,
